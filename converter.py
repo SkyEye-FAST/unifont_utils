@@ -69,7 +69,10 @@ class BaseConverter:
 
     def print_glyph(
         self,
+        *,
         black_and_white: Optional[bool] = None,
+        display_hex: bool = False,
+        display_bin: bool = False,
     ) -> None:
         """
         在控制台打印Unifont字形。
@@ -77,6 +80,8 @@ class BaseConverter:
         Args:
             black_and_white (bool, optional): 是否为黑白格式图片，默认使用初始化时的设置。
                 若为True，则0为白色，1为黑色；若为False，则0为透明，1为白色。
+            display_hex (bool, optional): 是否显示每行对应的Hex字符串。
+            display_bin (bool, optional): 是否显示每行对应的Bin字符串。
         """
 
         if len(self.data) != self.width * self.height:
@@ -99,6 +104,16 @@ class BaseConverter:
                 white_block if self.data[i * self.width + j] else black_block
                 for j in range(self.width)
             )
+            if display_hex:
+                length = self.width // 4
+                hex_slice = self.hex_str[i * length : (i + 1) * length]
+                if display_bin:
+                    bin_slice = "".join(
+                        str(self.data[i])
+                        for i in range(i * self.width, (i + 1) * self.width)
+                    )
+                    row = f"{bin_slice}\t{row}"
+                row = f"{hex_slice}\t{row}"
             print(row + new_line)
 
 
@@ -122,7 +137,7 @@ class ImgConverter(BaseConverter):
         self.data = (
             [0 if pixel == 255 else 1 for pixel in self.img.getdata()]
             if black_and_white
-            else [1 if pixel else 0 for pixel in self.img.getdata()]
+            else [1 if pixel == 255 else 0 for pixel in self.img.getdata()]
         )
         super().__init__(self.data, self.to_hex(), self.img.size, black_and_white)
 
@@ -132,7 +147,7 @@ class ImgConverter(BaseConverter):
             raise ValueError("无法转换为Hex字符串，图片数据为空。")
 
         n = reduce(lambda acc, pixel: (acc << 1) | (1 if pixel else 0), self.data, 0)
-        return hex(n)[2:].upper()
+        return hex(n)[2:].upper().zfill(32 if len(self.data) == 128 else 64)
 
 
 class HexConverter(BaseConverter):
