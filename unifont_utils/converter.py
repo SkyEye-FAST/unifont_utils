@@ -8,6 +8,8 @@ from typing import List, Tuple, Optional
 
 from PIL import Image as Img
 
+from .base import validate_hex_str
+
 
 class BaseConverter:
     """The base converter class. For use by other converter classes."""
@@ -175,13 +177,21 @@ class ImgConverter(BaseConverter):
 
 
 class HexConverter(BaseConverter):
-    """Unifont `.hex` string converter class."""
+    """Unifont `.hex` format string converter class."""
 
     def __init__(self, hex_str: str, black_and_white: bool = True) -> None:
-        if not hex_str or len(hex_str) not in {32, 64}:
-            raise ValueError("Invalid .hex string.")
+        """Initialize the Unifont `.hex` format string converter class (`HexConverter`).
 
-        self.hex_str = hex_str.upper()
+        Args:
+            hex_str (str): The Unifont `.hex` format string.
+            black_and_white (bool, optional): Whether it is a black and white image.
+
+                If `True`, `0` is white and `1` is black.
+
+                If `False`, `0` is transparent and `1` is white.
+        """
+
+        self.hex_str = validate_hex_str(hex_str)
         self.width, self.height = (16, 16) if len(hex_str) == 64 else (8, 16)
         super().__init__(
             self.to_img_data(), self.hex_str, (self.width, self.height), black_and_white
@@ -190,8 +200,8 @@ class HexConverter(BaseConverter):
     def to_img_data(self) -> List[int]:
         """Convert Unifont `.hex` format string to glyph pixel data."""
 
-        if not all(c in "0123456789ABCDEF" for c in self.hex_str):
-            raise ValueError("Invalid .hex string.")
+        if not self.hex_str:
+            return []
 
         n = int(self.hex_str, 16)
         return [(n >> i) & 1 for i in range(self.width * self.height - 1, -1, -1)]
