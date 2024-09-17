@@ -5,6 +5,7 @@ from functools import reduce
 from pathlib import Path
 from platform import system
 from typing import List, Tuple, Optional
+
 from PIL import Image as Img
 
 
@@ -42,7 +43,7 @@ class BaseConverter:
         save_path: Path,
         black_and_white: Optional[bool] = None,
     ) -> None:
-        """Save a Unifont glyph as PNG images.
+        """Save Unifont glyphs as PNG images.
 
         Args:
             save_path (Path): The path to save the image.
@@ -165,7 +166,9 @@ class ImgConverter(BaseConverter):
     def to_hex(self) -> str:
         """Convert glyph pixel data to Unifont `.hex` format string."""
         if not self.data:
-            raise ValueError("Unable to convert to .hex string. The glyph data is empty.")
+            raise ValueError(
+                "Unable to convert to .hex string. The glyph data is empty."
+            )
 
         n = reduce(lambda acc, pixel: (acc << 1) | (1 if pixel else 0), self.data, 0)
         return hex(n)[2:].upper().zfill(32 if len(self.data) == 128 else 64)
