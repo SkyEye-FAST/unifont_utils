@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-"""Unifont辅助转换程序"""
+"""Unifont Utils - Converter"""
 
 from functools import reduce
 from pathlib import Path
@@ -9,7 +9,7 @@ from PIL import Image as Img
 
 
 class BaseConverter:
-    """基础转换器类。"""
+    """The base converter class. For use by other converter classes."""
 
     def __init__(
         self,
@@ -18,15 +18,17 @@ class BaseConverter:
         size: Tuple[int, int],
         black_and_white: bool,
     ) -> None:
-        """
-        初始化基础转换器类。
+        """Initialize the base converter class (`BaseConverter`).
 
         Args:
-            data (List[int]): 字形数据。
-            hex_str (str): Unifont Hex字符串。
-            size (Tuple[int, int]): 字形尺寸，格式为(width, height)。
-            black_and_white (bool): 是否为黑白格式图片。
-                若为True，则0为白色，1为黑色；若为False，则0为透明，1为白色。
+            data (List[int]): Glyph pixel data in the image, stored as `0` and `1`.
+            hex_str (str): Glyph data in the Unifont `.hex` format.
+            size (Tuple[int, int]): Glyph size in pixels, as a tuple of `(width, height)`.
+            black_and_white (bool): Whether it is a black and white image.
+
+                If `True`, `0` is white and `1` is black.
+
+                If `False`, `0` is transparent and `1` is white.
         """
 
         self.data = data
@@ -40,17 +42,21 @@ class BaseConverter:
         save_path: Path,
         black_and_white: Optional[bool] = None,
     ) -> None:
-        """
-        将Unifont字形保存为图片。
+        """Save a Unifont glyph as PNG images.
 
         Args:
-            save_path (Path): 保存路径
-            black_and_white (bool, optional): 是否为黑白格式图片，默认为使用初始化时的设置。
-                若为True，则0为白色，1为黑色；若为False，则0为透明，1为白色。
+            save_path (Path): The path to save the image.
+            black_and_white (bool, optional): Whether it is a black and white image.
+
+                Defaults to the one specified during class initialization.
+
+                If `True`, `0` is white and `1` is black.
+
+                If `False`, `0` is transparent and `1` is white.
         """
 
         if len(self.data) != self.width * self.height:
-            raise ValueError("无效的字形数据或尺寸。")
+            raise ValueError("Invalid glyph data or size.")
 
         img = Img.new("RGBA", self.size)
         black_and_white = (
@@ -74,18 +80,31 @@ class BaseConverter:
         display_hex: bool = False,
         display_bin: bool = False,
     ) -> None:
-        """
-        在控制台打印Unifont字形。
+        """Print a Unifont glyph to the console.
 
         Args:
-            black_and_white (bool, optional): 是否为黑白格式图片，默认使用初始化时的设置。
-                若为True，则0为白色，1为黑色；若为False，则0为透明，1为白色。
-            display_hex (bool, optional): 是否显示每行对应的Hex字符串。
-            display_bin (bool, optional): 是否显示每行对应的Bin字符串。
+            black_and_white (bool, optional): Whether it is a black and white image.
+
+                Defaults to the one specified during class initialization.
+
+                If `True`, `0` is white and `1` is black.
+
+                If `False`, `0` is transparent and `1` is white.
+            display_hex (bool, optional): Whether to display the hexadecimal strings.
+
+                Defaults to `False`.
+
+                If `True`, the hexadecimal string of each line will be displayed on the left.
+
+            display_bin (bool, optional): Whether to display the binary strings.
+
+                Defaults to `False`.
+
+                If `True`, the binary string of each line will be displayed on the left.
         """
 
         if len(self.data) != self.width * self.height:
-            raise ValueError("无效的字形数据或尺寸。")
+            raise ValueError("Invalid glyph data or size.")
 
         white_block, black_block, new_line = (
             ("▇", "  ", "\n")
@@ -118,20 +137,22 @@ class BaseConverter:
 
 
 class ImgConverter(BaseConverter):
-    """字形图片转换器类。"""
+    """Glyph image converter class."""
 
     def __init__(self, img_path: Path, black_and_white: bool = True) -> None:
-        """
-        初始化字形图片转换器。
+        """Initialize the glyph image converter class (`ImgConverter`).
 
         Args:
-            img_path (Path): 图片路径
-            black_and_white (bool, optional): 是否为黑白格式图片，默认为True。
-                若为True，则0为白色，1为黑色；若为False，则0为透明，1为白色。
+            img_path (Path): The path to the image file.
+            black_and_white (bool, optional): Whether it is a black and white image.
+
+                If `True`, `0` is white and `1` is black.
+
+                If `False`, `0` is transparent and `1` is white.
         """
 
         if not img_path.is_file():
-            raise FileNotFoundError(f"文件不存在: {img_path}")
+            raise FileNotFoundError(f"File not found: {img_path}")
 
         self.img = Img.open(img_path).convert("1")
         self.data = (
@@ -142,20 +163,20 @@ class ImgConverter(BaseConverter):
         super().__init__(self.data, self.to_hex(), self.img.size, black_and_white)
 
     def to_hex(self) -> str:
-        """将图片数据转换为Unifont Hex字符串。"""
+        """Convert glyph pixel data to Unifont `.hex` format string."""
         if not self.data:
-            raise ValueError("无法转换为Hex字符串，图片数据为空。")
+            raise ValueError("Unable to convert to .hex string. The glyph data is empty.")
 
         n = reduce(lambda acc, pixel: (acc << 1) | (1 if pixel else 0), self.data, 0)
         return hex(n)[2:].upper().zfill(32 if len(self.data) == 128 else 64)
 
 
 class HexConverter(BaseConverter):
-    """Hex字符串转换器类。"""
+    """Unifont `.hex` string converter class."""
 
     def __init__(self, hex_str: str, black_and_white: bool = True) -> None:
         if not hex_str or len(hex_str) not in {32, 64}:
-            raise ValueError("无效的Hex字符串。")
+            raise ValueError("Invalid .hex string.")
 
         self.hex_str = hex_str.upper()
         self.width, self.height = (16, 16) if len(hex_str) == 64 else (8, 16)
@@ -164,10 +185,10 @@ class HexConverter(BaseConverter):
         )
 
     def to_img_data(self) -> List[int]:
-        """将Unifont Hex字符串转换为图片数据。"""
+        """Convert Unifont `.hex` format string to glyph pixel data."""
 
         if not all(c in "0123456789ABCDEF" for c in self.hex_str):
-            raise ValueError("无效的Hex字符串。")
+            raise ValueError("Invalid .hex string.")
 
         n = int(self.hex_str, 16)
         return [(n >> i) & 1 for i in range(self.width * self.height - 1, -1, -1)]

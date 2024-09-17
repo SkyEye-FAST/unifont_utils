@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "unifont_utils"
+version = "0.0.1"
+description = "Unifont Utilities, but rewritten in Python"
+authors = ["SkyEye_FAST <skyeyefast@foxmail.com>"]
+license = "Apache-2.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+pillow = "^10.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
