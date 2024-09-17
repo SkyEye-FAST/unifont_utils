@@ -55,8 +55,8 @@ def save_hex_file(glyphs: GlyphSet, file_path: Union[str, Path]) -> None:
         file_path = Path(file_path)
 
     with file_path.open("w", encoding="utf-8") as f:
-        for code_point, hex_str in glyphs.glyphs.items():
-            f.write(f"{code_point}:{hex_str}\n")
+        for code_point, glyph in sorted(glyphs.glyphs.items()):
+            f.write(f"{code_point}:{glyph.hex_str}\n")
 
     elapsed_time = time.time() - start_time
     print(

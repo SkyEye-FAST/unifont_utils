@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from .base import validate_code_point, validate_hex_str
 from .converter import HexConverter
 
+
 @dataclass
 class Glyph:
     """A class representing a single glyph in Unifont."""
@@ -86,19 +87,35 @@ class GlyphSet:
     def __delitem__(self, code_point: str) -> None:
         self.remove_glyph(code_point)
 
-    def __add__(self, other: "GlyphSet") -> "GlyphSet":
+    def __add__(self, other: Union["GlyphSet", "Glyph"]) -> "GlyphSet":
+        if not isinstance(other, (Glyph, GlyphSet)):
+            raise TypeError("Invalid type for the glyph(s) to add to a GlyphSet.")
+
         result = GlyphSet()
-        result.glyphs = {**self.glyphs, **other.glyphs}
+        result.glyphs = self.glyphs.copy()
+
+        if isinstance(other, Glyph):
+            self.glyphs.add_glyph(other)
+        else:
+            result.glyphs.update(other.glyphs)
+
         return result
 
-    def __iadd__(self, other: "GlyphSet") -> "GlyphSet":
-        self.glyphs = {**self.glyphs, **other.glyphs}
+    def __iadd__(self, other: Union["GlyphSet", "Glyph"]) -> "GlyphSet":
+        if not isinstance(other, (Glyph, GlyphSet)):
+            raise TypeError("Invalid type for the glyph(s) to add to a GlyphSet.")
+
+        if isinstance(other, Glyph):
+            self.glyphs.add_glyph(other)
+        else:
+            self.glyphs.update(other.glyphs)
+
         return self
 
     def __len__(self) -> int:
         return len(self.glyphs)
 
-    def __iter__(self) -> "GlyphSet":
+    def __iter__(self) -> iter:
         return iter(self.glyphs.values())
 
     def __contains__(self, glyph: Union[Glyph, str]) -> bool:
@@ -111,29 +128,33 @@ class GlyphSet:
 
         Args:
             code_points (Union[str, Tuple[str, str]]): The code points to initialize.
+
                 If a string is provided, it should be a comma-separated list of code points.
+
                 If a tuple is provided, it should be in the format of `(begin, end)`.
+
+                The code points specified should be hexadecimal number strings.
         """
 
         if not isinstance(code_points, (str, tuple)):
             raise TypeError(
-                "Invalid type for code_points. "
+                "Invalid type for the specified code points. "
                 "The argument must be either a string or a tuple of two strings."
             )
+
         if isinstance(code_points, str):
-            code_points = (
-                code_points.split(",") if "," in code_points else [code_points]
-            )
-        if isinstance(code_points, tuple):
+            code_points = code_points.split(",")
+        elif isinstance(code_points, tuple):
             if len(code_points) != 2:
                 raise ValueError(
                     "The tuple must contain exactly two elements (begin, end)."
                 )
             begin_code_point, end_code_point = code_points
             code_points = range(int(begin_code_point, 16), int(end_code_point, 16) + 1)
+            code_points = [hex(i)[2:] for i in code_points]
 
         for code_point in code_points:
-            code_point = validate_code_point(code_point)
+            code_point = validate_code_point(str(code_point))
             self.add_glyph((code_point, ""))
 
     def get_glyph(self, code_point: str) -> Glyph:
@@ -163,16 +184,15 @@ class GlyphSet:
 
         if not isinstance(glyph, (Glyph, tuple)):
             raise TypeError(
-                "Invalid type for glyph. "
+                "Invalid type for the glyph to add. "
                 "The argument must be either a Glyph object or a tuple of two strings."
             )
         if isinstance(glyph, tuple):
             code_point, hex_str = glyph
+            code_point = validate_code_point(code_point)
+            hex_str = validate_hex_str(hex_str)
         else:
             code_point, hex_str = glyph.code_point, glyph.hex_str
-
-        code_point = validate_code_point(code_point)
-        hex_str = validate_hex_str(hex_str)
 
         if code_point in self.glyphs:
             raise ValueError(
@@ -206,7 +226,7 @@ class GlyphSet:
 
         if not isinstance(glyph, (Glyph, tuple)):
             raise TypeError(
-                "Invalid type for glyph. "
+                "Invalid type for the glyph to update. "
                 "The argument must be either a Glyph object or a tuple of two strings."
             )
         if isinstance(glyph, tuple):
