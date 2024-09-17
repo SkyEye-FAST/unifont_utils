@@ -154,7 +154,7 @@ class GlyphSet:
             code_points = [hex(i)[2:] for i in code_points]
 
         for code_point in code_points:
-            code_point = validate_code_point(str(code_point))
+            code_point = validate_code_point(code_point)
             self.add_glyph((code_point, ""))
 
     def get_glyph(self, code_point: str) -> Glyph:
@@ -172,6 +172,56 @@ class GlyphSet:
             raise KeyError(f"Glyph with code point U+{code_point} not found.")
 
         return self.glyphs[code_point]
+
+    def get_glyphs(
+        self, code_points: Union[str, Tuple[str, str]], *, skip_empty: bool = True
+    ) -> "GlyphSet":
+        """Get a set of glyphs by their code points.
+
+        Args:
+            code_points (Union[str, Tuple[str, str]]): The code points of the glyphs to get.
+
+                If a string is provided, it should be a comma-separated list of code points.
+
+                If a tuple is provided, it should be in the format of `(begin, end)`.
+
+                The code points specified should be hexadecimal number strings.
+            skip_empty (bool, optional): Whether to skip empty glyphs. Defaults to `True`.
+
+                If `True`, empty glyphs will be skipped.
+
+                If `False`, empty glyphs will be included with empty .hex strings.
+
+        Returns:
+            GlyphSet: The obtained set of glyphs.
+        """
+
+        if not isinstance(code_points, (str, tuple)):
+            raise TypeError(
+                "Invalid type for the specified code points. "
+                "The argument must be either a string or a tuple of two strings."
+            )
+
+        if isinstance(code_points, str):
+            code_points = code_points.split(",")
+        elif isinstance(code_points, tuple):
+            if len(code_points) != 2:
+                raise ValueError(
+                    "The tuple must contain exactly two elements (begin, end)."
+                )
+            begin_code_point, end_code_point = code_points
+            code_points = range(int(begin_code_point, 16), int(end_code_point, 16) + 1)
+            code_points = [hex(i)[2:] for i in code_points]
+
+        result = GlyphSet()
+        for code_point in code_points:
+            code_point = validate_code_point(code_point)
+            if code_point in self.glyphs:
+                result.add_glyph(self.glyphs[code_point])
+            elif not skip_empty:
+                result.add_glyph((code_point, ""))
+
+        return result
 
     def add_glyph(self, glyph: Union[Glyph, Tuple[str, str]]) -> None:
         """Add a glyph to the set.
