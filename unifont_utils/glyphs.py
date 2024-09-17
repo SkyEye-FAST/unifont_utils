@@ -101,8 +101,10 @@ class GlyphSet:
     def __iter__(self) -> "GlyphSet":
         return iter(self.glyphs.values())
 
-    def __contains__(self, code_point: str) -> bool:
-        return validate_code_point(code_point) in self.glyphs
+    def __contains__(self, glyph: Union[Glyph, str]) -> bool:
+        if isinstance(glyph, str):
+            return validate_code_point(glyph) in self.glyphs
+        return glyph.code_point in self.glyphs
 
     def initialize_glyphs(self, code_points: Union[str, Tuple[str, str]]) -> None:
         """Initialize a set of glyphs.
