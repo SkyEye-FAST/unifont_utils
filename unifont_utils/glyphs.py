@@ -182,7 +182,7 @@ class GlyphSet:
         return self.glyphs[code_point]
 
     def get_glyphs(
-        self, code_points: CodePoint, *, skip_empty: bool = True
+        self, code_points: CodePoints, *, skip_empty: bool = True
     ) -> "GlyphSet":
         """Get a set of glyphs by their code points.
 
