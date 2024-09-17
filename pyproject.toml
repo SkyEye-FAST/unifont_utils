@@ -5,6 +5,16 @@ description = "Unifont Utilities, but rewritten in Python."
 authors = ["SkyEye_FAST <skyeyefast@foxmail.com>"]
 license = "Apache-2.0"
 readme = "README.md"
+repository = "https://github.com/SkyEye-FAST/unifont_utils"
+keywords = ["unifont"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Natural Language :: Chinese (Simplified)",
+    "Topic :: Text Processing :: Fonts",
+    "Topic :: Utilities",
+]
 
 [tool.poetry.dependencies]
 python = ">=3.8"

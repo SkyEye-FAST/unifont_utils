@@ -1,10 +1,12 @@
 # Unifont Utils
 
-This repository contains a set of tools for working with the Unifont font.
+- **[English](README.md) | [中文](README_zh.md)**
+
+This project provides a set of tools for working with the Unifont font.
 
 ## Installation
 
-Install the package using the following command:
+Install the package from PyPI using the following command:
 
 ``` shell
 pip install unifont_utils
