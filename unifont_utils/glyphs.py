@@ -5,7 +5,7 @@ from typing import Dict, Tuple, Optional, Union
 from unicodedata import name
 from dataclasses import dataclass
 
-from .base import validate_code_point, validate_hex_str
+from .base import validate_code_point, validate_hex_str, CodePoint, CodePoints
 from .converter import HexConverter
 
 
@@ -13,7 +13,7 @@ from .converter import HexConverter
 class Glyph:
     """A class representing a single glyph in Unifont."""
 
-    code_point: str
+    code_point: CodePoint
     hex_str: Optional[str] = None
 
     def __post_init__(self) -> None:
@@ -78,13 +78,13 @@ class GlyphSet:
     def __str__(self) -> str:
         return f"Unifont Glyph Set ({len(self.glyphs)} glyphs)"
 
-    def __getitem__(self, code_point: str) -> Glyph:
+    def __getitem__(self, code_point: CodePoint) -> Glyph:
         return self.get_glyph(code_point)
 
-    def __setitem__(self, code_point: str, hex_str: str) -> None:
+    def __setitem__(self, code_point: CodePoint, hex_str: str) -> None:
         self.add_glyph((code_point, hex_str))
 
-    def __delitem__(self, code_point: str) -> None:
+    def __delitem__(self, code_point: CodePoint) -> None:
         self.remove_glyph(code_point)
 
     def __add__(self, other: Union["GlyphSet", "Glyph"]) -> "GlyphSet":
@@ -123,23 +123,23 @@ class GlyphSet:
             return validate_code_point(glyph) in self.glyphs
         return glyph.code_point in self.glyphs
 
-    def initialize_glyphs(self, code_points: Union[str, Tuple[str, str]]) -> None:
+    def initialize_glyphs(self, code_points: CodePoints) -> None:
         """Initialize a set of glyphs.
 
         Args:
-            code_points (Union[str, Tuple[str, str]]): The code points to initialize.
+            code_points (CodePoints): The code points to initialize.
 
                 If a string is provided, it should be a comma-separated list of code points.
 
                 If a tuple is provided, it should be in the format of `(begin, end)`.
 
-                The code points specified should be hexadecimal number strings.
+                The code points specified should be hexadecimal number strings or integers.
         """
 
         if not isinstance(code_points, (str, tuple)):
             raise TypeError(
                 "Invalid type for the specified code points. "
-                "The argument must be either a string or a tuple of two strings."
+                "The argument must be either a string or a tuple."
             )
 
         if isinstance(code_points, str):
@@ -150,6 +150,14 @@ class GlyphSet:
                     "The tuple must contain exactly two elements (begin, end)."
                 )
             begin_code_point, end_code_point = code_points
+            if not isinstance(begin_code_point, (str, int)) or not isinstance(
+                end_code_point, (str, int)
+            ):
+                raise TypeError(
+                    "The begin and end code points must be strings or integers."
+                )
+            begin_code_point = validate_code_point(begin_code_point)
+            end_code_point = validate_code_point(end_code_point)
             code_points = range(int(begin_code_point, 16), int(end_code_point, 16) + 1)
             code_points = [hex(i)[2:] for i in code_points]
 
@@ -157,11 +165,11 @@ class GlyphSet:
             code_point = validate_code_point(code_point)
             self.add_glyph((code_point, ""))
 
-    def get_glyph(self, code_point: str) -> Glyph:
+    def get_glyph(self, code_point: CodePoint) -> Glyph:
         """Get a glyph by its code point.
 
         Args:
-            code_point (str): The code point of the glyph to get.
+            code_point (CodePoint): The code point of the glyph to get.
 
         Returns:
             Glyph: The obtained glyph.
@@ -174,12 +182,12 @@ class GlyphSet:
         return self.glyphs[code_point]
 
     def get_glyphs(
-        self, code_points: Union[str, Tuple[str, str]], *, skip_empty: bool = True
+        self, code_points: CodePoint, *, skip_empty: bool = True
     ) -> "GlyphSet":
         """Get a set of glyphs by their code points.
 
         Args:
-            code_points (Union[str, Tuple[str, str]]): The code points of the glyphs to get.
+            code_points (CodePoints): The code points of the glyphs to get.
 
                 If a string is provided, it should be a comma-separated list of code points.
 
@@ -199,7 +207,7 @@ class GlyphSet:
         if not isinstance(code_points, (str, tuple)):
             raise TypeError(
                 "Invalid type for the specified code points. "
-                "The argument must be either a string or a tuple of two strings."
+                "The argument must be either a string or a tuple."
             )
 
         if isinstance(code_points, str):
@@ -210,6 +218,14 @@ class GlyphSet:
                     "The tuple must contain exactly two elements (begin, end)."
                 )
             begin_code_point, end_code_point = code_points
+            if not isinstance(begin_code_point, (str, int)) or not isinstance(
+                end_code_point, (str, int)
+            ):
+                raise TypeError(
+                    "The begin and end code points must be strings or integers."
+                )
+            begin_code_point = validate_code_point(begin_code_point)
+            end_code_point = validate_code_point(end_code_point)
             code_points = range(int(begin_code_point, 16), int(end_code_point, 16) + 1)
             code_points = [hex(i)[2:] for i in code_points]
 
@@ -223,11 +239,11 @@ class GlyphSet:
 
         return result
 
-    def add_glyph(self, glyph: Union[Glyph, Tuple[str, str]]) -> None:
+    def add_glyph(self, glyph: Union[Glyph, Tuple[CodePoint, str]]) -> None:
         """Add a glyph to the set.
 
         Args:
-            glyph (Union[Glyph, Tuple[str, str]]): The glyph to add.
+            glyph (Union[Glyph, Tuple[CodePoint, str]]): The glyph to add.
 
                 If a tuple is provided, it should be in the format of `(code_point, hex_str)`.
         """
@@ -252,11 +268,11 @@ class GlyphSet:
 
         self.glyphs[code_point] = Glyph(code_point, hex_str)
 
-    def remove_glyph(self, code_point: str) -> None:
+    def remove_glyph(self, code_point: CodePoint) -> None:
         """Remove a glyph from the set.
 
         Args:
-            code_point (str): The code point of the glyph to remove.
+            code_point (CodePoint): The code point of the glyph to remove.
         """
 
         code_point = validate_code_point(code_point)
@@ -265,11 +281,11 @@ class GlyphSet:
 
         del self.glyphs[code_point]
 
-    def update_glyph(self, glyph: Union[Glyph, Tuple[str, str]]) -> None:
+    def update_glyph(self, glyph: Union[Glyph, Tuple[CodePoint, str]]) -> None:
         """Update a glyph in the set.
 
         Args:
-            glyph (Union[Glyph, Tuple[str, str]]): The new glyph to update.
+            glyph (Union[Glyph, Tuple[CodePoint, str]]): The new glyph to update.
 
                 If a tuple is provided, it should be in the format of `(code_point, hex_str)`.
         """

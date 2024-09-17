@@ -1,10 +1,14 @@
 # -*- encoding: utf-8 -*-
 """Unifont Utils - Base Module"""
 
-from typing import Optional
+from typing import Optional, Union, Tuple, TypeAlias
+
+# Type aliases
+CodePoint: TypeAlias = Union[str, int]
+CodePoints: TypeAlias = Union[str, Tuple[CodePoint, CodePoint]]
 
 
-def validate_code_point(code_point: str) -> str:
+def validate_code_point(code_point: Union[str, int]) -> str:
     """Validate a code point string and return its normalized form.
 
     Args:
@@ -17,6 +21,10 @@ def validate_code_point(code_point: str) -> str:
         ValueError: If the code point is invalid.
     """
 
+    if not isinstance(code_point, (str, int)):
+        raise ValueError("Invalid code point type. Must be a string or integer.")
+    if isinstance(code_point, int):
+        code_point = hex(code_point)[2:].upper()
     if not code_point.isalnum() or len(code_point) >= 7:
         raise ValueError("Invalid code point.")
 

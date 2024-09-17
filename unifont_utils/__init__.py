@@ -3,4 +3,4 @@
 
 from .converter import ImgConverter, HexConverter
 from .glyphs import Glyph, GlyphSet
-from .hex_file import load_hex_file, save_hex_file
+from .files import load_hex_file, save_hex_file, save_unicode_page
