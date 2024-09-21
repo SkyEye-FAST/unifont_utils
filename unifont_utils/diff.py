@@ -1,7 +1,6 @@
 # -*- encoding: utf-8 -*-
 """Unifont Utils - Diff"""
 
-from platform import system
 from typing import List, Union
 
 from .converter import HexConverter
@@ -83,16 +82,12 @@ def print_diff(
     a, b = get_img_data(glyph_a), get_img_data(glyph_b)
 
     white_block, black_block, add_block, remove_block, new_line = (
-        ("▇", "  ", "+", "-", "\n")
-        if system() == "Windows"
-        else (
             "\033[48;5;7m  ",  # White
             "\033[48;5;0m  ",  # Black
             "\033[48;5;2m  ",  # Green
             "\033[48;5;1m  ",  # Red
             "\033[0m",
         )
-    )
 
     if black_and_white:
         white_block, black_block = black_block, white_block

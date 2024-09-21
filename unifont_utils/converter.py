@@ -3,7 +3,6 @@
 
 from functools import reduce
 from pathlib import Path
-from platform import system
 from typing import List, Tuple, Optional
 
 from PIL import Image as Img
@@ -116,9 +115,9 @@ class BaseConverter:
             raise ValueError("Invalid glyph data or size.")
 
         white_block, black_block, new_line = (
-            ("▇", "  ", "\n")
-            if system() == "Windows"
-            else ("\033[48;5;7m  ", "\033[48;5;0m  ", "\033[0m")
+            "\033[48;5;7m  ",
+            "\033[48;5;0m  ",
+            "\033[0m",
         )
 
         black_and_white = (
