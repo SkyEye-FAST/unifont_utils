@@ -105,7 +105,6 @@ class BaseConverter:
                 Defaults to `False`.
 
                 If `True`, the hexadecimal string of each line will be displayed on the left.
-
             display_bin (bool, optional): Whether to display the binary strings.
 
                 Defaults to `False`.
@@ -122,24 +121,33 @@ class BaseConverter:
             else ("\033[0;37;47m  ", "\033[0;37;40m  ", "\033[0m")
         )
 
-        black_and_white = black_and_white or self.black_and_white
+        black_and_white = (
+            black_and_white if black_and_white is not None else self.black_and_white
+        )
         if black_and_white:
             white_block, black_block = black_block, white_block
+
+        hex_length = self.width // 4 if display_hex else None
 
         for i in range(self.height):
             row = "".join(
                 white_block if self.data[i * self.width + j] else black_block
                 for j in range(self.width)
             )
-            if display_hex:
-                length = self.width // 4
-                hex_slice = self.hex_str[i * length : (i + 1) * length]
+
+            if display_hex or display_bin:
+                prefix = []
+                if display_hex:
+                    hex_slice = self.hex_str[i * hex_length : (i + 1) * hex_length]
+                    prefix.append(hex_slice)
                 if display_bin:
                     bin_slice = "".join(
                         str(self.data[i * self.width + j]) for j in range(self.width)
                     )
-                    row = f"{bin_slice}\t{row}"
-                row = f"{hex_slice}\t{row}"
+                    prefix.append(bin_slice)
+
+                row = "\t".join(prefix) + "\t" + row
+
             print(row + new_line)
 
 
@@ -198,7 +206,10 @@ class HexConverter(BaseConverter):
         self.hex_str = validate_hex_str(hex_str)
         self.width, self.height = (16, 16) if len(hex_str) == 64 else (8, 16)
         super().__init__(
-            self._to_img_data(), self.hex_str, (self.width, self.height), black_and_white
+            self._to_img_data(),
+            self.hex_str,
+            (self.width, self.height),
+            black_and_white,
         )
 
     def _to_img_data(self) -> List[int]:

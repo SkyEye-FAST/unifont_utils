@@ -10,11 +10,11 @@ CodePoint: TypeAlias = Union[str, int]
 CodePoints: TypeAlias = Union[str, Tuple[CodePoint, CodePoint]]
 
 
-def validate_code_point(code_point: Union[str, int]) -> str:
+def validate_code_point(code_point: CodePoint) -> str:
     """Validate a code point string and return its normalized form.
 
     Args:
-        code_point (str): The code point string to validate.
+        code_point (CodePoint): The code point string to validate.
 
     Returns:
         str: The normalized code point if valid.
@@ -26,18 +26,17 @@ def validate_code_point(code_point: Union[str, int]) -> str:
     if not isinstance(code_point, (str, int)):
         raise ValueError("Invalid code point type. Must be a string or integer.")
     if isinstance(code_point, int):
-        code_point = hex(code_point)[2:].upper()
+        code_point = hex(code_point)[2:]
     if not code_point.isalnum() or len(code_point) >= 7:
-        raise ValueError("Invalid code point.")
+        raise ValueError(f"Invalid code point: {code_point}.")
 
     code_point = code_point.upper()
 
-    if not all(c in "0123456789ABCDEF" for c in code_point):
-        raise ValueError("Invalid character in code point.")
+    for c in code_point:
+        if c not in "0123456789ABCDEF":
+            raise ValueError(f"Invalid character in code point: {c}.")
 
-    if len(code_point) >= 5:
-        return code_point.zfill(6)
-    return code_point.zfill(4)
+    return code_point.zfill(6 if len(code_point) > 4 else 4)
 
 
 def validate_code_points(code_points: CodePoints) -> List[str]:
@@ -64,10 +63,14 @@ def validate_code_points(code_points: CodePoints) -> List[str]:
         code_points_list = code_points.split(",")
     else:
         if len(code_points) != 2:
-            raise ValueError("The tuple must contain exactly two elements (begin, end).")
+            raise ValueError(
+                "The tuple must contain exactly two elements (begin, end)."
+            )
         begin, end = code_points
         if not isinstance(begin, (str, int)) or not isinstance(end, (str, int)):
-            raise TypeError("The begin and end code points must be strings or integers.")
+            raise TypeError(
+                "The begin and end code points must be strings or integers."
+            )
         begin, end = validate_code_point(begin), validate_code_point(end)
         code_points_list = range(int(begin, 16), int(end, 16) + 1)
         code_points_list = [hex(i)[2:].zfill(4) for i in code_points_list]
@@ -96,10 +99,11 @@ def validate_hex_str(hex_str: Optional[str]) -> Optional[str]:
             f"Invalid .hex string length: {hex_str} (length: {len(hex_str)})."
         )
 
-    if not all(c in "0123456789ABCDEF" for c in hex_str):
-        raise ValueError("Invalid character in .hex string.")
+    for c in hex_str:
+        if c not in "0123456789ABCDEF":
+            raise ValueError(f"Invalid character in .hex string: {c}.")
 
-    return hex_str.upper() if hex_str else ""
+    return hex_str.upper()
 
 
 def validate_file_path(file_path: FilePath) -> Path:

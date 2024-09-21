@@ -60,7 +60,6 @@ class Glyph:
                 Defaults to `False`.
 
                 If `True`, the hexadecimal string of each line will be displayed on the left.
-
             display_bin (bool, optional): Whether to display the binary strings.
 
                 Defaults to `False`.
