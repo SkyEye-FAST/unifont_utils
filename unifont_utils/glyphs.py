@@ -5,7 +5,13 @@ from typing import Dict, Tuple, Optional, Union
 from unicodedata import name
 from dataclasses import dataclass
 
-from .base import validate_code_point, validate_hex_str, CodePoint, CodePoints
+from .base import (
+    validate_code_point,
+    validate_code_points,
+    validate_hex_str,
+    CodePoint,
+    CodePoints,
+)
 from .converter import HexConverter
 
 
@@ -20,7 +26,7 @@ class Glyph:
         self.code_point = validate_code_point(self.code_point)
         self.hex_str = validate_hex_str(self.hex_str)
         self.__converter = HexConverter(self.hex_str)
-        self.img_data = self.__converter.to_img_data()
+        self.img_data = self.__converter.data
         try:
             self.unicode_name = name(chr(int(self.code_point, 16)))
         except ValueError:
@@ -136,33 +142,8 @@ class GlyphSet:
                 The code points specified should be hexadecimal number strings or integers.
         """
 
-        if not isinstance(code_points, (str, tuple)):
-            raise TypeError(
-                "Invalid type for the specified code points. "
-                "The argument must be either a string or a tuple."
-            )
-
-        if isinstance(code_points, str):
-            code_points = code_points.split(",")
-        elif isinstance(code_points, tuple):
-            if len(code_points) != 2:
-                raise ValueError(
-                    "The tuple must contain exactly two elements (begin, end)."
-                )
-            begin_code_point, end_code_point = code_points
-            if not isinstance(begin_code_point, (str, int)) or not isinstance(
-                end_code_point, (str, int)
-            ):
-                raise TypeError(
-                    "The begin and end code points must be strings or integers."
-                )
-            begin_code_point = validate_code_point(begin_code_point)
-            end_code_point = validate_code_point(end_code_point)
-            code_points = range(int(begin_code_point, 16), int(end_code_point, 16) + 1)
-            code_points = [hex(i)[2:] for i in code_points]
-
+        code_points = validate_code_points(code_points)
         for code_point in code_points:
-            code_point = validate_code_point(code_point)
             self.add_glyph((code_point, ""))
 
     def get_glyph(self, code_point: CodePoint) -> Glyph:
@@ -204,34 +185,10 @@ class GlyphSet:
             GlyphSet: The obtained set of glyphs.
         """
 
-        if not isinstance(code_points, (str, tuple)):
-            raise TypeError(
-                "Invalid type for the specified code points. "
-                "The argument must be either a string or a tuple."
-            )
-
-        if isinstance(code_points, str):
-            code_points = code_points.split(",")
-        elif isinstance(code_points, tuple):
-            if len(code_points) != 2:
-                raise ValueError(
-                    "The tuple must contain exactly two elements (begin, end)."
-                )
-            begin_code_point, end_code_point = code_points
-            if not isinstance(begin_code_point, (str, int)) or not isinstance(
-                end_code_point, (str, int)
-            ):
-                raise TypeError(
-                    "The begin and end code points must be strings or integers."
-                )
-            begin_code_point = validate_code_point(begin_code_point)
-            end_code_point = validate_code_point(end_code_point)
-            code_points = range(int(begin_code_point, 16), int(end_code_point, 16) + 1)
-            code_points = [hex(i)[2:] for i in code_points]
-
         result = GlyphSet()
+
+        code_points = validate_code_points(code_points)
         for code_point in code_points:
-            code_point = validate_code_point(code_point)
             if code_point in self.glyphs:
                 result.add_glyph(self.glyphs[code_point])
             elif not skip_empty:
@@ -311,3 +268,11 @@ class GlyphSet:
             raise KeyError(f"Glyph with code point U+{code_point} not found.")
 
         self.glyphs[code_point].hex_str = hex_str
+
+    def sort_glyphs(self) -> None:
+        """Sort the glyphs in the set by their code points."""
+
+        if not self.glyphs:
+            raise ValueError("Cannot sort an empty glyph set.")
+
+        self.glyphs = dict(sorted(self.glyphs.items(), key=lambda x: int(x[0], 16)))

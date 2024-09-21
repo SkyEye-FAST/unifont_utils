@@ -2,17 +2,12 @@
 """Unifont Utils - Files"""
 
 import time
-from typing import Union, TypeAlias
-from pathlib import Path
 
 from PIL import Image as Img
 
-from .base import CodePoint
+from .base import CodePoint, FilePath, validate_file_path
 from .converter import HexConverter
 from .glyphs import GlyphSet
-
-# Type aliases
-FilePath: TypeAlias = Union[str, Path]
 
 
 def load_hex_file(file_path: FilePath) -> GlyphSet:
@@ -29,9 +24,7 @@ def load_hex_file(file_path: FilePath) -> GlyphSet:
 
     start_time = time.time()
 
-    if isinstance(file_path, str):
-        file_path = Path(file_path)
-
+    file_path = validate_file_path(file_path)
     glyphs = GlyphSet()
 
     with file_path.open("r", encoding="utf-8") as f:
@@ -58,9 +51,7 @@ def save_hex_file(glyphs: GlyphSet, file_path: FilePath) -> None:
 
     start_time = time.time()
 
-    if isinstance(file_path, str):
-        file_path = Path(file_path)
-
+    file_path = validate_file_path(file_path)
     with file_path.open("w", encoding="utf-8") as f:
         for code_point, glyph in sorted(glyphs.glyphs.items()):
             f.write(f"{code_point}:{glyph.hex_str}\n")
@@ -90,14 +81,14 @@ def save_unicode_page(
 
     start_time = time.time()
 
-    if isinstance(file_path, str):
-        file_path = Path(file_path)
+    glyphs.sort_glyphs()
+    file_path = validate_file_path(file_path)
     if isinstance(start, str):
         start = int(start, 16)
 
     img = Img.new("RGBA", (256, 256))
     x, y, count = 0, 0, 0
-    for code_point, glyph in sorted(glyphs.glyphs.items(), key=lambda x: int(x[0], 16)):
+    for code_point, glyph in glyphs.glyphs.items():
         code_point = int(code_point, 16)
         if code_point < start:
             continue
