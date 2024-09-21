@@ -12,7 +12,7 @@ from .base import validate_hex_str
 
 
 class BaseConverter:
-    """The base converter class. For use by other converter classes."""
+    """The base converter class for use by other converter classes."""
 
     def __init__(
         self,
@@ -40,6 +40,23 @@ class BaseConverter:
         self.width, self.height = size
         self.black_and_white = black_and_white
 
+    def _get_rgba_data(self, black_and_white: bool) -> List[Tuple[int, int, int, int]]:
+        """Get RGBA data based on black and white mode.
+
+        Args:
+            black_and_white (bool): Whether it is a black and white image.
+
+            If `True`, `0` is white and `1` is black.
+
+            If `False`, `0` is transparent and `1` is white.
+        """
+
+        if black_and_white:
+            return [
+                (0, 0, 0, 255) if pixel else (255, 255, 255, 255) for pixel in self.data
+            ]
+        return [(255, 255, 255, 255) if pixel else (0, 0, 0, 0) for pixel in self.data]
+
     def save_img(
         self,
         save_path: Path,
@@ -62,18 +79,8 @@ class BaseConverter:
             raise ValueError("Invalid glyph data or size.")
 
         img = Img.new("RGBA", self.size)
-        black_and_white = (
-            black_and_white if black_and_white is not None else self.black_and_white
-        )
-        if black_and_white:
-            rgba_data = [
-                (0, 0, 0, 255) if pixel else (255, 255, 255, 255) for pixel in self.data
-            ]
-        else:
-            rgba_data = [
-                (255, 255, 255, 255) if pixel else (0, 0, 0, 0) for pixel in self.data
-            ]
-        img.putdata(rgba_data)
+        black_and_white = black_and_white or self.black_and_white
+        img.putdata(self._get_rgba_data(black_and_white))
         img.save(save_path, "PNG")
 
     def print_glyph(
@@ -115,9 +122,7 @@ class BaseConverter:
             else ("\033[0;37;47m  ", "\033[0;37;40m  ", "\033[0m")
         )
 
-        black_and_white = (
-            black_and_white if black_and_white is not None else self.black_and_white
-        )
+        black_and_white = black_and_white or self.black_and_white
         if black_and_white:
             white_block, black_block = black_block, white_block
 
@@ -131,8 +136,7 @@ class BaseConverter:
                 hex_slice = self.hex_str[i * length : (i + 1) * length]
                 if display_bin:
                     bin_slice = "".join(
-                        str(self.data[i])
-                        for i in range(i * self.width, (i + 1) * self.width)
+                        str(self.data[i * self.width + j]) for j in range(self.width)
                     )
                     row = f"{bin_slice}\t{row}"
                 row = f"{hex_slice}\t{row}"
@@ -163,9 +167,9 @@ class ImgConverter(BaseConverter):
             if black_and_white
             else [1 if pixel == 255 else 0 for pixel in self.img.getdata()]
         )
-        super().__init__(self.data, self.to_hex(), self.img.size, black_and_white)
+        super().__init__(self.data, self._to_hex(), self.img.size, black_and_white)
 
-    def to_hex(self) -> str:
+    def _to_hex(self) -> str:
         """Convert glyph pixel data to Unifont `.hex` format string."""
         if not self.data:
             raise ValueError(
@@ -194,10 +198,10 @@ class HexConverter(BaseConverter):
         self.hex_str = validate_hex_str(hex_str)
         self.width, self.height = (16, 16) if len(hex_str) == 64 else (8, 16)
         super().__init__(
-            self.to_img_data(), self.hex_str, (self.width, self.height), black_and_white
+            self._to_img_data(), self.hex_str, (self.width, self.height), black_and_white
         )
 
-    def to_img_data(self) -> List[int]:
+    def _to_img_data(self) -> List[int]:
         """Convert Unifont `.hex` format string to glyph pixel data."""
 
         if not self.hex_str:
