@@ -82,12 +82,12 @@ def print_diff(
     a, b = get_img_data(glyph_a), get_img_data(glyph_b)
 
     white_block, black_block, add_block, remove_block, new_line = (
-            "\033[48;5;7m  ",  # White
-            "\033[48;5;0m  ",  # Black
-            "\033[48;5;2m  ",  # Green
-            "\033[48;5;1m  ",  # Red
-            "\033[0m",
-        )
+        "\033[48;5;7m  ",  # White
+        "\033[48;5;0m  ",  # Black
+        "\033[48;5;2m  ",  # Green
+        "\033[48;5;1m  ",  # Red
+        "\033[0m",
+    )
 
     if black_and_white:
         white_block, black_block = black_block, white_block
@@ -95,23 +95,19 @@ def print_diff(
     width = len(a) // 16
 
     def get_row(i: int, data: List[str]) -> str:
+        row_data = data[i * width : (i + 1) * width]
+        return "".join(white_block if pixel else black_block for pixel in row_data)
+
+    def get_row_diff(i: int) -> str:
+        row_diff = {
+            "+": add_block,
+            "-": remove_block,
+            "1": white_block,
+            "0": black_block,
+        }
         return "".join(
-            white_block if data[i * width + j] else black_block for j in range(width)
+            row_diff[element] for element in diff_list[i * width : (i + 1) * width]
         )
 
-    def get_row_diff(i: int, data: List[str]) -> str:
-        row_diff = ""
-        for j in range(width):
-            element = data[i * width + j]
-            if element == "+":
-                row_diff += add_block
-            elif element == "-":
-                row_diff += remove_block
-            elif element == "1":
-                row_diff += white_block
-            else:
-                row_diff += black_block
-        return row_diff
-
     for i in range(16):
-        print(f"{get_row(i,a)}\t{get_row_diff(i,diff_list)}\t{get_row(i,b)}{new_line}")
+        print(f"{get_row(i, a)}\t{get_row_diff(i)}\t{get_row(i, b)}{new_line}")
