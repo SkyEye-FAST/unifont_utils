@@ -26,7 +26,7 @@ class Glyph:
         self.code_point = validate_code_point(self.code_point)
         self.hex_str = validate_hex_str(self.hex_str)
         self.__converter = HexConverter(self.hex_str)
-        self.img_data = self.__converter.data
+        self.data = self.__converter.data
         try:
             self.unicode_name = name(chr(int(self.code_point, 16)))
         except ValueError:

@@ -11,7 +11,7 @@ from .glyphs import GlyphSet
 
 
 def load_hex_file(file_path: FilePath) -> GlyphSet:
-    """Parse and load a .hex file.
+    """Parse and load a `.hex` file.
 
     Args:
         file_path (FilePath): The path to the `.hex` file.
@@ -44,7 +44,7 @@ def load_hex_file(file_path: FilePath) -> GlyphSet:
 
 
 def save_hex_file(glyphs: GlyphSet, file_path: FilePath) -> None:
-    """Save a .hex file.
+    """Save a `.hex` file.
 
     Args:
         glyphs (GlyphSet): The glyphs to save.

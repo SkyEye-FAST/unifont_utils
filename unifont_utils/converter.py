@@ -118,7 +118,7 @@ class BaseConverter:
         white_block, black_block, new_line = (
             ("▇", "  ", "\n")
             if system() == "Windows"
-            else ("\033[0;37;47m  ", "\033[0;37;40m  ", "\033[0m")
+            else ("\033[48;5;7m  ", "\033[48;5;0m  ", "\033[0m")
         )
 
         black_and_white = (
