@@ -7,14 +7,14 @@ from .converter import HexConverter
 from .glyphs import Glyph
 
 
-def get_img_data(glyph: Union[str, Glyph]) -> List[str]:
+def get_img_data(glyph: Union[str, Glyph]) -> List[int]:
     """Input a `.hex` string or a Glyph object and output its image data.
 
     Args:
         glyph (Union[str, Glyph]): The glyph to be converted.
 
     Returns:
-        List[str]: The converted image data.
+        List[int]: The converted image data.
 
     Raises:
         TypeError: If the glyph is not a valid type.
@@ -26,7 +26,7 @@ def get_img_data(glyph: Union[str, Glyph]) -> List[str]:
     return HexConverter(glyph).data if isinstance(glyph, str) else glyph.data
 
 
-def diff_glyphs(glyph_a: Union[str, Glyph], glyph_b: Union[str, Glyph]) -> List[str]:
+def diff_glyphs(glyph_a: Union[str, Glyph], glyph_b: Union[str, Glyph]) -> List[int]:
     """Compares two glyphs and returns a list of differences.
 
     Args:
@@ -34,7 +34,7 @@ def diff_glyphs(glyph_a: Union[str, Glyph], glyph_b: Union[str, Glyph]) -> List[
         glyph_b (Union[str, Glyph]): The second glyph to compare.
 
     Returns:
-        List[str]: A list of differences between the two glyphs.
+        List[int]: A list of differences between the two glyphs.
 
     Raises:
         ValueError: If the two glyphs have different sizes.
@@ -63,7 +63,7 @@ def print_diff(
     glyph_b: Union[str, Glyph],
     *,
     black_and_white: bool = True,
-):
+) -> None:
     """Prints the differences between two glyphs.
 
     Args:
@@ -111,3 +111,53 @@ def print_diff(
 
     for i in range(16):
         print(f"{get_row(i, a)}\t{get_row_diff(i)}\t{get_row(i, b)}{new_line}")
+
+
+def replace_pattern(img_data, pattern_a, pattern_b, pattern_width) -> List[int]:
+    """Replaces a pattern in an image with another pattern.
+
+    Args:
+        img_data (List[int]): The image data to be modified.
+        pattern_a (List[int]): The pattern to be replaced.
+        pattern_b (List[int]): The new pattern to replace the old one.
+        pattern_width (int): The width of the patterns.
+
+    Returns:
+        List[int]: The modified image data.
+
+    Raises:
+        ValueError: If the two patterns have different sizes.
+    """
+
+    if len(pattern_a) != len(pattern_b):
+        raise ValueError("The two patterns must have the same size.")
+    image_width = len(img_data) // 16
+    pattern_height = len(pattern_a) // pattern_width
+
+    def match_pattern(img_data, pattern_a, i, j):
+        for y in range(pattern_height):
+            for x in range(pattern_width):
+                if (
+                    pattern_a[y * pattern_width + x] == 1
+                    and img_data[(i + y) * image_width + (j + x)] != 1
+                ):
+                    return False
+        return True
+
+    def apply_new_pattern(img_data, pattern_a, pattern_b, i, j):
+        for y in range(pattern_height):
+            for x in range(pattern_width):
+                if pattern_b[y * pattern_width + x] == 1:
+                    img_data[(i + y) * image_width + (j + x)] = 1
+                elif (
+                    pattern_b[y * pattern_width + x] == 0
+                    and pattern_a[y * pattern_width + x] == 1
+                ):
+                    continue
+
+    for i in range(16 - pattern_height + 1):
+        for j in range(image_width - pattern_width + 1):
+            if match_pattern(img_data, pattern_a, i, j):
+                apply_new_pattern(img_data, pattern_a, pattern_b, i, j)
+
+    return img_data

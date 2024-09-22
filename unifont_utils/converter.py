@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 """Unifont Utils - Converter"""
 
-from functools import reduce
+from functools import reduce, lru_cache
 from pathlib import Path
 from typing import List, Tuple, Optional
 
@@ -33,34 +33,53 @@ class BaseConverter:
                 If `False`, `0` is transparent and `1` is white.
         """
 
-        self.data = data
-        self.hex_str = hex_str
-        self.size = size
-        self.width, self.height = size
-        self.black_and_white = black_and_white
+        self._data = data
+        self._hex_str = hex_str
+        self._size = size
+        self._black_and_white = black_and_white
 
+    @property
+    def data(self) -> List[int]:
+        """Get the glyph data."""
+        return self._data
+
+    @property
+    def hex_str(self) -> str:
+        """Get the Unifont `.hex` format string."""
+        return self._hex_str
+
+    @property
+    def size(self) -> Tuple[int, int]:
+        """Get the size of the glyph."""
+        return self._size
+
+    @property
+    def black_and_white(self) -> bool:
+        """Get the black and white mode of the glyph."""
+        return self._black_and_white
+
+    @property
+    @lru_cache(maxsize=1)
+    def width(self) -> int:
+        """Get the width of the glyph."""
+        return self.size[0]
+
+    @property
+    @lru_cache(maxsize=1)
+    def height(self) -> int:
+        """Get the height of the glyph."""
+        return self.size[1]
+
+    @lru_cache(maxsize=1)
     def _get_rgba_data(self, black_and_white: bool) -> List[Tuple[int, int, int, int]]:
-        """Get RGBA data based on black and white mode.
-
-        Args:
-            black_and_white (bool): Whether it is a black and white image.
-
-            If `True`, `0` is white and `1` is black.
-
-            If `False`, `0` is transparent and `1` is white.
-        """
-
+        """Get RGBA data based on black and white mode."""
         if black_and_white:
             return [
                 (0, 0, 0, 255) if pixel else (255, 255, 255, 255) for pixel in self.data
             ]
         return [(255, 255, 255, 255) if pixel else (0, 0, 0, 0) for pixel in self.data]
 
-    def save_img(
-        self,
-        save_path: Path,
-        black_and_white: Optional[bool] = None,
-    ) -> None:
+    def save_img(self, save_path: Path, black_and_white: Optional[bool] = None) -> None:
         """Save Unifont glyphs as PNG images.
 
         Args:
@@ -78,7 +97,9 @@ class BaseConverter:
             raise ValueError("Invalid glyph data or size.")
 
         img = Img.new("RGBA", self.size)
-        black_and_white = black_and_white or self.black_and_white
+        black_and_white = (
+            black_and_white if black_and_white is not None else self.black_and_white
+        )
         img.putdata(self._get_rgba_data(black_and_white))
         img.save(save_path, "PNG")
 
@@ -169,13 +190,13 @@ class ImgConverter(BaseConverter):
             raise FileNotFoundError(f"File not found: {img_path}")
 
         self.img = Img.open(img_path).convert("1")
-        self.data = (
+        self._data = (
             [0 if pixel == 255 else 1 for pixel in self.img.getdata()]
             if black_and_white
             else [1 if pixel == 255 else 0 for pixel in self.img.getdata()]
         )
         super().__init__(
-            self.data, self.to_hex(self.data), self.img.size, black_and_white
+            self._data, self.to_hex(self._data), self.img.size, black_and_white
         )
 
     @staticmethod
@@ -216,11 +237,11 @@ class HexConverter(BaseConverter):
                 If `False`, `0` is transparent and `1` is white.
         """
 
-        self.hex_str = validate_hex_str(hex_str)
+        self._hex_str = validate_hex_str(hex_str)
         self.width, self.height = (16, 16) if len(hex_str) == 64 else (8, 16)
         super().__init__(
-            self.to_img_data(self.hex_str, self.width, self.height),
-            self.hex_str,
+            self.to_img_data(self._hex_str, self.width, self.height),
+            self._hex_str,
             (self.width, self.height),
             black_and_white,
         )
