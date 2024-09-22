@@ -174,17 +174,31 @@ class ImgConverter(BaseConverter):
             if black_and_white
             else [1 if pixel == 255 else 0 for pixel in self.img.getdata()]
         )
-        super().__init__(self.data, self._to_hex(), self.img.size, black_and_white)
+        super().__init__(
+            self.data, self.to_hex(self.data), self.img.size, black_and_white
+        )
 
-    def _to_hex(self) -> str:
-        """Convert glyph pixel data to Unifont `.hex` format string."""
-        if not self.data:
+    @staticmethod
+    def to_hex(data: List[int]) -> str:
+        """Convert glyph pixel data to Unifont `.hex` format string.
+
+        Args:
+            data (List[int]): Glyph pixel data in the image, stored as `0` and `1`.
+
+        Returns:
+            str: The Unifont `.hex` format string.
+
+        Raises:
+            ValueError: If the glyph data is empty.
+        """
+
+        if not data:
             raise ValueError(
                 "Unable to convert to .hex string. The glyph data is empty."
             )
 
-        n = reduce(lambda acc, pixel: (acc << 1) | (1 if pixel else 0), self.data, 0)
-        return hex(n)[2:].upper().zfill(32 if len(self.data) == 128 else 64)
+        n = reduce(lambda acc, pixel: (acc << 1) | (1 if pixel else 0), data, 0)
+        return hex(n)[2:].upper().zfill(32 if len(data) == 128 else 64)
 
 
 class HexConverter(BaseConverter):
@@ -205,17 +219,27 @@ class HexConverter(BaseConverter):
         self.hex_str = validate_hex_str(hex_str)
         self.width, self.height = (16, 16) if len(hex_str) == 64 else (8, 16)
         super().__init__(
-            self._to_img_data(),
+            self.to_img_data(self.hex_str, self.width, self.height),
             self.hex_str,
             (self.width, self.height),
             black_and_white,
         )
 
-    def _to_img_data(self) -> List[int]:
-        """Convert Unifont `.hex` format string to glyph pixel data."""
+    @staticmethod
+    def to_img_data(hex_str: str, width: int = 16, height: int = 16) -> List[int]:
+        """Convert Unifont `.hex` format string to glyph pixel data.
 
-        if not self.hex_str:
+        Args:
+            hex_str (str): The Unifont `.hex` format string.
+            width (int, optional): The width of the glyph in pixels. Defaults to `16`.
+            height (int, optional): The height of the glyph in pixels. Defaults to `16`.
+
+        Returns:
+            List[int]: The glyph pixel data in the image, stored as `0` and `1`.
+        """
+
+        if not hex_str:
             return []
 
-        n = int(self.hex_str, 16)
-        return [(n >> i) & 1 for i in range(self.width * self.height - 1, -1, -1)]
+        n = int(hex_str, 16)
+        return [(n >> i) & 1 for i in range(width * height - 1, -1, -1)]
