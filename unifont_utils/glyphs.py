@@ -1,42 +1,221 @@
 # -*- encoding: utf-8 -*-
 """Unifont Utils - Glyphs"""
 
-from typing import Dict, Tuple, Optional, Union
+from dataclasses import dataclass, field
 from unicodedata import name
-from dataclasses import dataclass
+from typing import Dict, List, Tuple, Optional, Union
+
+from PIL import Image as Img
 
 from .base import (
-    validate_code_point,
-    validate_code_points,
-    validate_hex_str,
+    Validator as V,
     CodePoint,
     CodePoints,
+    FilePath,
 )
-from .converter import HexConverter
+from .converter import Converter as C
 
 
 @dataclass
 class Glyph:
     """A class representing a single glyph in Unifont."""
 
-    code_point: CodePoint
-    hex_str: Optional[str] = None
+    _code_point: CodePoint
+    _width: int = 16
+    _hex_str: str = field(default_factory=str)
+    _data: List[int] = field(default_factory=list)
+    _black_and_white: bool = True
 
     def __post_init__(self) -> None:
-        self.code_point = validate_code_point(self.code_point)
-        self.hex_str = validate_hex_str(self.hex_str)
-        self.__converter = HexConverter(self.hex_str)
-        self.data = self.__converter.data
-        try:
-            self.unicode_name = name(chr(int(self.code_point, 16)))
-        except ValueError:
-            self.unicode_name = ""
+        self._code_point = V.code_point(self._code_point)
 
     def __str__(self) -> str:
-        code_point = self.code_point
-        if len(self.code_point) == 6 and self.code_point.startswith("0"):
+        code_point = self._code_point
+        if len(self._code_point) == 6 and self._code_point.startswith("0"):
             code_point = code_point[1:]
         return f"Unifont Glyph (U+{code_point})"
+
+    @property
+    def code_point(self) -> CodePoint:
+        """The code point of the character represented by the glyph."""
+        return self._code_point
+
+    @property
+    def width(self) -> int:
+        """The width of the glyph."""
+        return self._width
+
+    @property
+    def hex_str(self) -> str:
+        """The `.hex` format string of the glyph."""
+        return self._hex_str
+
+    @property
+    def data(self) -> List[int]:
+        """The pixel data of the glyph."""
+        return self._data
+
+    @property
+    def black_and_white(self) -> bool:
+        """Whether the glyph is loaded from a black and white image."""
+        return self._black_and_white
+
+    @property
+    def unicode_name(self) -> str:
+        """The Unicode name of the glyph."""
+        try:
+            return name(chr(int(self._code_point, 16)))
+        except ValueError:
+            return ""
+
+    def load_hex(self, hex_str: str) -> None:
+        """Load a `.hex` format string.
+
+        Args:
+            hex_str (str): The `.hex` format string of the glyph.
+        """
+
+        hex_str = V.hex_str(hex_str)
+        width = 16 if len(hex_str) == 64 else 8
+        self._hex_str = hex_str
+        self._width = width
+        self._data = C.to_img_data(hex_str, width)
+
+    def load_img(self, img_path: FilePath, black_and_white: bool = True) -> None:
+        """Load an image file.
+        Args:
+            img_path (FilePath): The path to the image file.
+            black_and_white (bool, optional): Whether it is a black and white image.
+
+                If `True`, `0` is white and `1` is black.
+
+                If `False`, `0` is transparent and `1` is white.
+        """
+
+        img_path = V.file_path(img_path)
+        if not img_path.is_file():
+            raise FileNotFoundError(f"File not found: {img_path}")
+
+        img = Img.open(img_path).convert("1")
+        self._width = img.size[0]
+        data = (
+            [0 if pixel == 255 else 1 for pixel in img.getdata()]
+            if black_and_white
+            else [1 if pixel == 255 else 0 for pixel in img.getdata()]
+        )
+        self._hex_str = C.to_hex(data)
+        self._black_and_white = black_and_white
+
+    @classmethod
+    def init_from_hex(cls, code_point: CodePoint, hex_str: str) -> "Glyph":
+        """Create a new Glyph object from a code point and a `.hex` format string.
+
+        Args:
+            code_point (CodePoint): The code point of the character represented by the glyph.
+            hex_str (str): The `.hex` format string of the glyph.
+
+        Returns:
+            Glyph: The created glyph object.
+        """
+
+        code_point = V.code_point(code_point)
+        hex_str = V.hex_str(hex_str)
+        width = 16 if len(hex_str) == 64 else 8
+        data = C.to_img_data(hex_str, width)
+
+        return cls(code_point, _hex_str=hex_str, _width=width, _data=data)
+
+    @classmethod
+    def init_from_img(
+        cls, code_point: CodePoint, img_path: FilePath, black_and_white: bool = True
+    ) -> "Glyph":
+        """Create a new Glyph object from a code point and an image file.
+
+        Args:
+            code_point (CodePoint): The code point of the character represented by the glyph.
+            img_path (FilePath): The path to the image file.
+            black_and_white (bool, optional): Whether it is a black and white image.
+
+                If `True`, `0` is white and `1` is black.
+
+                If `False`, `0` is transparent and `1` is white.
+
+        Returns:
+            Glyph: The created glyph object.
+        """
+
+        code_point = V.code_point(code_point)
+        img_path = V.file_path(img_path)
+        if not img_path.is_file():
+            raise FileNotFoundError(f"File not found: {img_path}")
+
+        img = Img.open(img_path).convert("1")
+        data = (
+            [0 if pixel == 255 else 1 for pixel in img.getdata()]
+            if black_and_white
+            else [1 if pixel == 255 else 0 for pixel in img.getdata()]
+        )
+
+        return cls(
+            code_point,
+            _hex_str=C.to_hex(data),
+            _data=data,
+            _width=img.size[0],
+            _black_and_white=black_and_white,
+        )
+
+    def save_img(
+        self,
+        save_path: FilePath,
+        img_format: str = "PNG",
+        black_and_white: Optional[bool] = None,
+    ) -> None:
+        """Save Unifont glyphs as PNG images.
+
+        Args:
+            save_path (FilePath): The path to save the image.
+            format (str, optional): The format of the image. Defaults to `PNG`.
+            black_and_white (bool, optional): Whether it is a black and white image.
+
+                Defaults to the one specified during class initialization.
+
+                If `True`, `0` is white and `1` is black.
+
+                If `False`, `0` is transparent and `1` is white.
+
+        Raises:
+            ValueError: If the image format is not supported.
+            ValueError: If the glyph data or size is invalid.
+        """
+
+        save_path = V.file_path(save_path)
+        img_format = img_format.upper()
+        if img_format not in {"PNG", "BMP"}:
+            raise ValueError(
+                "Invalid image format. The image format must be PNG or BMP."
+            )
+        if len(self._data) != self._width * 16:
+            raise ValueError("Invalid glyph data or size.")
+
+        img = Img.new("RGBA", (self._width, 16))
+        black_and_white = (
+            black_and_white if black_and_white is not None else self._black_and_white
+        )
+        if img_format == "BMP":
+            black_and_white = True
+            print(
+                "Warning: BMP format does not support transparency. "
+                "The image will be saved as a black and white image."
+            )
+        data = (
+            [(0, 0, 0, 255) if pixel else (255, 255, 255, 255) for pixel in self._data]
+            if black_and_white
+            else [
+                (255, 255, 255, 255) if pixel else (0, 0, 0, 0) for pixel in self._data
+            ]
+        )
+        img.putdata(data)
+        img.save(save_path, img_format)
 
     def print_glyph(
         self,
@@ -67,11 +246,45 @@ class Glyph:
                 If `True`, the binary string of each line will be displayed on the left.
         """
 
-        self.__converter.print_glyph(
-            black_and_white=black_and_white,
-            display_hex=display_hex,
-            display_bin=display_bin,
+        width, height = self._width, 16
+
+        if len(self._data) != width * height:
+            raise ValueError("Invalid glyph data or size.")
+
+        white_block, black_block, new_line = (
+            "\033[48;5;7m  ",
+            "\033[48;5;0m  ",
+            "\033[0m",
         )
+
+        black_and_white = (
+            black_and_white if black_and_white is not None else self._black_and_white
+        )
+        if black_and_white:
+            white_block, black_block = black_block, white_block
+
+        hex_length = width // 4 if display_hex else None
+
+        for i in range(height):
+            row = "".join(
+                white_block if self._data[i * width + j] else black_block
+                for j in range(width)
+            )
+
+            if display_hex or display_bin:
+                prefix = []
+                if display_hex:
+                    hex_slice = self._hex_str[i * hex_length : (i + 1) * hex_length]
+                    prefix.append(hex_slice)
+                if display_bin:
+                    bin_slice = "".join(
+                        str(self._data[i * width + j]) for j in range(width)
+                    )
+                    prefix.append(bin_slice)
+
+                row = "\t".join(prefix) + "\t" + row
+
+            print(row + new_line)
 
 
 class GlyphSet:
@@ -81,7 +294,19 @@ class GlyphSet:
         self.glyphs: Dict[str, Glyph] = {}
 
     def __str__(self) -> str:
-        return f"Unifont Glyph Set ({len(self.glyphs)} glyphs)"
+        if not self.glyphs:
+            return "Unifont Glyph Set (0 glyphs)"
+
+        self.sort_glyphs()
+        code_points = ", ".join(
+            (
+                f"U+{code_point[1:]}"
+                if len(code_point) == 6 and code_point.startswith("0")
+                else f"U+{code_point}"
+            )
+            for code_point in self.glyphs
+        )
+        return f"Unifont Glyph Set ({len(self.glyphs)} glyphs): {code_points or 'None'}"
 
     def __getitem__(self, code_point: CodePoint) -> Glyph:
         return self.get_glyph(code_point)
@@ -119,9 +344,7 @@ class GlyphSet:
         return iter(self.glyphs.values())
 
     def __contains__(self, glyph: Union[Glyph, str]) -> bool:
-        code_point = validate_code_point(
-            glyph if isinstance(glyph, str) else glyph.code_point
-        )
+        code_point = V.code_point(glyph if isinstance(glyph, str) else glyph.code_point)
         return code_point in self.glyphs
 
     def initialize_glyphs(self, code_points: CodePoints) -> None:
@@ -137,7 +360,7 @@ class GlyphSet:
                 The code points specified should be hexadecimal number strings or integers.
         """
 
-        code_points = validate_code_points(code_points)
+        code_points = V.code_points(code_points)
         for code_point in code_points:
             self.add_glyph((code_point, ""))
 
@@ -151,7 +374,7 @@ class GlyphSet:
             Glyph: The obtained glyph.
         """
 
-        code_point = validate_code_point(code_point)
+        code_point = V.code_point(code_point)
         try:
             return self.glyphs[code_point]
         except KeyError as exc:
@@ -181,7 +404,7 @@ class GlyphSet:
         """
 
         result = GlyphSet()
-        code_points = validate_code_points(code_points)
+        code_points = V.code_points(code_points)
         for code_point in code_points:
             if code_point in self.glyphs:
                 result.add_glyph(self.glyphs[code_point])
@@ -212,7 +435,7 @@ class GlyphSet:
             code_point (CodePoint): The code point of the glyph to remove.
         """
 
-        code_point = validate_code_point(code_point)
+        code_point = V.code_point(code_point)
         if code_point not in self.glyphs:
             raise KeyError(f"Glyph with code point U+{code_point} not found.")
         del self.glyphs[code_point]
@@ -246,9 +469,9 @@ class GlyphSet:
             return glyph
         if isinstance(glyph, tuple):
             code_point, hex_str = glyph
-            code_point = validate_code_point(code_point)
-            hex_str = validate_hex_str(hex_str)
-            return Glyph(code_point, hex_str)
+            code_point = V.code_point(code_point)
+            hex_str = V.hex_str(hex_str)
+            return Glyph.init_from_hex(code_point, hex_str)
         raise TypeError(
             "Invalid glyph type. Must be a Glyph or a tuple (code_point, hex_str)."
         )

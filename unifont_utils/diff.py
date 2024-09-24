@@ -3,7 +3,8 @@
 
 from typing import List, Union
 
-from .converter import HexConverter
+from .base import Validator as V
+from .converter import Converter as C
 from .glyphs import Glyph
 
 
@@ -20,10 +21,13 @@ def get_img_data(glyph: Union[str, Glyph]) -> List[int]:
         TypeError: If the glyph is not a valid type.
     """
 
-    if not isinstance(glyph, (str, Glyph)):
-        raise TypeError("The glyph must be either a .hex string or a Glyph object.")
-
-    return HexConverter(glyph).data if isinstance(glyph, str) else glyph.data
+    if isinstance(glyph, str):
+        glyph = V.hex_str(glyph)
+        width = 16 if len(glyph) == 64 else 8
+        return C.to_img_data(glyph, width)
+    if isinstance(glyph, Glyph):
+        return glyph.data
+    raise TypeError("The glyph must be either a .hex string or a Glyph object.")
 
 
 def diff_glyphs(glyph_a: Union[str, Glyph], glyph_b: Union[str, Glyph]) -> List[int]:
@@ -113,7 +117,9 @@ def print_diff(
         print(f"{get_row(i, a)}\t{get_row_diff(i)}\t{get_row(i, b)}{new_line}")
 
 
-def replace_pattern(img_data, pattern_a, pattern_b, pattern_width) -> List[int]:
+def replace_pattern(
+    img_data: List[int], pattern_a: List[int], pattern_b: List[int], pattern_width: int
+) -> List[int]:
     """Replaces a pattern in an image with another pattern.
 
     Args:
@@ -134,7 +140,9 @@ def replace_pattern(img_data, pattern_a, pattern_b, pattern_width) -> List[int]:
     image_width = len(img_data) // 16
     pattern_height = len(pattern_a) // pattern_width
 
-    def match_pattern(img_data, pattern_a, i, j):
+    def match_pattern(
+        img_data: List[int], pattern_a: List[int], i: int, j: int
+    ) -> bool:
         for y in range(pattern_height):
             for x in range(pattern_width):
                 if (
@@ -144,7 +152,9 @@ def replace_pattern(img_data, pattern_a, pattern_b, pattern_width) -> List[int]:
                     return False
         return True
 
-    def apply_new_pattern(img_data, pattern_a, pattern_b, i, j):
+    def apply_new_pattern(
+        img_data: List[int], pattern_a: List[int], pattern_b: List[int], i: int, j: int
+    ) -> None:
         for y in range(pattern_height):
             for x in range(pattern_width):
                 if pattern_b[y * pattern_width + x] == 1:

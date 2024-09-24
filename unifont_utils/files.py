@@ -5,8 +5,8 @@ import time
 
 from PIL import Image as Img
 
-from .base import CodePoint, FilePath, validate_file_path
-from .converter import HexConverter
+from .base import CodePoint, FilePath, Validator as V
+from .converter import Converter as C
 from .glyphs import GlyphSet
 
 
@@ -22,7 +22,7 @@ def load_hex_file(file_path: FilePath) -> GlyphSet:
 
     start_time = time.time()
 
-    file_path = validate_file_path(file_path)
+    file_path = V.file_path(file_path)
     if not file_path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -53,7 +53,7 @@ def save_hex_file(glyphs: GlyphSet, file_path: FilePath) -> None:
 
     start_time = time.time()
 
-    file_path = validate_file_path(file_path)
+    file_path = V.file_path(file_path)
     with file_path.open("w", encoding="utf-8") as f:
         for code_point, glyph in sorted(glyphs.glyphs.items()):
             f.write(f"{code_point}:{glyph.hex_str}\n")
@@ -83,7 +83,7 @@ def save_unicode_page(
     start_time = time.time()
 
     glyphs.sort_glyphs()
-    file_path = validate_file_path(file_path)
+    file_path = V.file_path(file_path)
     start = int(start, 16) if isinstance(start, str) else start
 
     img = Img.new("RGBA", (256, 256))
@@ -93,11 +93,10 @@ def save_unicode_page(
             continue
 
         if glyph.hex_str:
-            converter = HexConverter(glyph.hex_str)
             glyph_img = Img.new("RGBA", (16, 16))
             rgba_data = [
                 (255, 255, 255, 255) if pixel else (0, 0, 0, 0)
-                for pixel in converter.data
+                for pixel in C.to_img_data(glyph.hex_str)
             ]
             glyph_img.putdata(rgba_data)
 
