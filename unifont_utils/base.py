@@ -34,7 +34,7 @@ class Validator:
         else:
             raise ValueError("Invalid code point type. Must be a string or integer.")
 
-        if not code_point.isalnum() or len(code_point) >= 7:
+        if not code_point.isalnum() or int(code_point, 16) > 0x10FFFF:
             raise ValueError(f"Invalid code point: {code_point}.")
 
         code_point = code_point.upper()
