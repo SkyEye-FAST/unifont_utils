@@ -25,6 +25,9 @@ class Pattern:
         data (List[int]): The pattern data.
         width (int): The width of the pattern.
         height (Optional[int]): The height of the pattern.
+
+    Raises:
+        ValueError: If the size of the pattern is invalid.
     """
 
     data: List[int]
@@ -37,12 +40,67 @@ class Pattern:
     """
 
     def __post_init__(self) -> None:
+        if self.width <= 2:
+            raise ValueError("The width must be greater than 2 pixels.")
+        if self.width > 16:
+            raise ValueError("The width must be less than 16 pixels.")
         if self.height is None:
-            if self.width <= 0:
-                raise ValueError("The width must be a positive integer.")
             self.height = len(self.data) // self.width
             if len(self.data) % self.width != 0:
                 raise ValueError("The length of the data must be divisible by width.")
+            if self.height <= 2:
+                raise ValueError("The height must be greater than 2 pixels.")
+            if self.height > 16:
+                raise ValueError("The height must be less than 16 pixels.")
+
+    def __str__(self) -> str:
+        return f"Unifont Pattern ({self.width}x{self.height})"
+
+    @classmethod
+    def init_from_hex(cls, hex_str: str, width: int) -> "Pattern":
+        """Create a new Pattern object from a `.hex` format string.
+
+        Args:
+            hex_str (str): The `.hex` format string of the glyph.
+            width (int): The width of the pattern.
+
+        Returns:
+            Pattern: The created Pattern object.
+        """
+
+        hex_str = V.hex_str(hex_str)
+        data = C.to_img_data(hex_str, width)
+
+        return cls(data, width)
+
+    @classmethod
+    def init_from_img(cls, img_path: FilePath) -> "Pattern":
+        """Create a new Pattern object from an image file.
+
+        Args:
+            img_path (FilePath): The path to the image file.
+
+        Returns:
+            Pattern: The created Pattern object.
+        """
+
+        img_path = V.file_path(img_path)
+        if not img_path.is_file():
+            raise FileNotFoundError(f"File not found: {img_path}")
+
+        img = Img.open(img_path).convert("RGBA")
+        data = []
+        for pixel in img.getdata():
+            if pixel == (255, 255, 255, 255):
+                data.append(0)
+            elif pixel == (0, 0, 0, 255):
+                data.append(1)
+            elif pixel[4] == 0:
+                data.append(-1)
+            else:
+                raise ValueError(f"Invalid pixel RGBA value: {pixel}")
+
+        return cls(data, img.size[0], img.size[1])
 
 
 @dataclass
