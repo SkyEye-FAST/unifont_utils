@@ -173,6 +173,11 @@ class Glyph:
         return self._black_and_white
 
     @property
+    def character(self) -> str:
+        """The character represented by the glyph."""
+        return chr(int(self._code_point, 16))
+
+    @property
     def unicode_name(self) -> str:
         """The Unicode name of the glyph."""
         try:
