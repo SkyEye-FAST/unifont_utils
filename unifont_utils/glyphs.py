@@ -2,6 +2,7 @@
 """Unifont Utils - Glyphs"""
 
 from dataclasses import dataclass, field
+import time
 from unicodedata import name
 from typing import Dict, List, Tuple, Optional, Union
 
@@ -17,14 +18,67 @@ from .converter import Converter as C
 
 
 @dataclass
+class Pattern:
+    """A class to represent a pattern.
+
+    Attributes:
+        data (List[int]): The pattern data.
+        width (int): The width of the pattern.
+        height (Optional[int]): The height of the pattern.
+    """
+
+    data: List[int]
+    """The pattern data."""
+    width: int
+    """The width of the pattern."""
+    height: Optional[int] = None
+    """The height of the pattern.
+    If it is `None`, the height is set to the length of `data` divided by `width`.
+    """
+
+    def __post_init__(self) -> None:
+        if self.height is None:
+            if self.width <= 0:
+                raise ValueError("The width must be a positive integer.")
+            self.height = len(self.data) // self.width
+            if len(self.data) % self.width != 0:
+                raise ValueError("The length of the data must be divisible by width.")
+
+
+@dataclass
+class SearchPattern(Pattern):
+    """A class to represent a pattern for searching."""
+
+    def __post_init__(self) -> None:
+        if not all(i in {0, 1} for i in self.data):
+            raise ValueError("The pattern data must be a list of integers 0 and 1.")
+
+
+@dataclass
+class ReplacePattern(Pattern):
+    """A class to represent a pattern for replacing."""
+
+    def __post_init__(self) -> None:
+        if not all(i in {0, 1, -1} for i in self.data):
+            raise ValueError(
+                "The pattern data must be a list of integers 0, 1, and -1."
+            )
+
+
+@dataclass
 class Glyph:
     """A class representing a single glyph in Unifont."""
 
     _code_point: CodePoint
+    """The code point of the character represented by the glyph."""
     _width: int = 16
+    """The width of the glyph."""
     _hex_str: str = field(default_factory=str)
+    """The `.hex` format string of the glyph."""
     _data: List[int] = field(default_factory=list)
+    """The pixel data of the glyph."""
     _black_and_white: bool = True
+    """Whether the glyph is loaded from a black and white image."""
 
     def __post_init__(self) -> None:
         self._code_point = V.code_point(self._code_point)
@@ -286,15 +340,77 @@ class Glyph:
 
             print(row + new_line)
 
+    def replace(
+        self, search_pattern: SearchPattern, replace_pattern: ReplacePattern
+    ) -> List[int]:
+        """Replaces a pattern in an image with another pattern.
 
+        Args:
+            search_pattern (SearchPattern): The pattern to be searched.
+            replace_pattern (ReplacePattern): The pattern to be replaced.
+
+        Returns:
+            List[int]: The modified image data.
+
+        Raises:
+            ValueError: If the two patterns have different sizes.
+        """
+
+        img_data = self._data.copy()
+        pattern_a, pattern_b = search_pattern.data, replace_pattern.data
+        if len(pattern_a) != len(pattern_b):
+            raise ValueError("The two patterns must have same size.")
+        image_width = len(img_data) // 16
+        pattern_height, pattern_width = search_pattern.height, search_pattern.width
+
+        def match_pattern(
+            img_data: List[int], pattern_a: List[int], i: int, j: int
+        ) -> bool:
+            for y in range(pattern_height):
+                for x in range(pattern_width):
+                    if (
+                        pattern_a[y * pattern_width + x] == 1
+                        and img_data[(i + y) * image_width + (j + x)] != 1
+                    ):
+                        return False
+            return True
+
+        def apply_pattern(
+            img_data: List[int], pattern_b: List[int], i: int, j: int
+        ) -> List[int]:
+            for y in range(pattern_height):
+                for x in range(pattern_width):
+                    match pattern_b[y * pattern_width + x]:
+                        case 1:
+                            img_data[(i + y) * image_width + (j + x)] = 1
+                        case 0:
+                            img_data[(i + y) * image_width + (j + x)] = 0
+                        case -1:
+                            continue
+            return img_data
+
+        for i in range(16 - pattern_height + 1):
+            for j in range(image_width - pattern_width + 1):
+                if match_pattern(img_data, pattern_a, i, j):
+                    img_data = apply_pattern(img_data, pattern_b, i, j)
+
+        self._data = img_data
+
+
+@dataclass
 class GlyphSet:
     """A class representing a set of glyphs in Unifont."""
 
-    def __init__(self) -> None:
-        self.glyphs: Dict[str, Glyph] = {}
+    _glyphs: Dict[str, Glyph] = field(default_factory=dict)
+    """A dictionary of glyphs in the set."""
+
+    @property
+    def glyphs(self) -> Dict[str, Glyph]:
+        """A dictionary of glyphs in the set."""
+        return self._glyphs
 
     def __str__(self) -> str:
-        if not self.glyphs:
+        if not self._glyphs:
             return "Unifont Glyph Set (0 glyphs)"
 
         self.sort_glyphs()
@@ -304,9 +420,11 @@ class GlyphSet:
                 if len(code_point) == 6 and code_point.startswith("0")
                 else f"U+{code_point}"
             )
-            for code_point in self.glyphs
+            for code_point in self._glyphs
         )
-        return f"Unifont Glyph Set ({len(self.glyphs)} glyphs): {code_points or 'None'}"
+        return (
+            f"Unifont Glyph Set ({len(self._glyphs)} glyphs): {code_points or 'None'}"
+        )
 
     def __getitem__(self, code_point: CodePoint) -> Glyph:
         return self.get_glyph(code_point)
@@ -319,7 +437,7 @@ class GlyphSet:
 
     def __add__(self, other: Union["GlyphSet", Glyph]) -> "GlyphSet":
         result = GlyphSet()
-        result.glyphs = self.glyphs.copy()
+        result.glyphs = self._glyphs.copy()
         if isinstance(other, Glyph):
             result.add_glyph(other)
         elif isinstance(other, GlyphSet):
@@ -332,23 +450,25 @@ class GlyphSet:
         if isinstance(other, Glyph):
             self.add_glyph(other)
         elif isinstance(other, GlyphSet):
-            self.glyphs.update(other.glyphs)
+            self._glyphs.update(other.glyphs)
         else:
             raise TypeError("Invalid type for in-place addition to GlyphSet.")
         return self
 
     def __len__(self) -> int:
-        return len(self.glyphs)
+        return len(self._glyphs)
 
     def __iter__(self) -> iter:
-        return iter(self.glyphs.values())
+        return iter(self._glyphs.values())
 
     def __contains__(self, glyph: Union[Glyph, str]) -> bool:
         code_point = V.code_point(glyph if isinstance(glyph, str) else glyph.code_point)
-        return code_point in self.glyphs
+        return code_point in self._glyphs
 
-    def initialize_glyphs(self, code_points: CodePoints) -> None:
+    @classmethod
+    def init_glyphs(cls, code_points: CodePoints) -> None:
         """Initialize a set of glyphs.
+        All the code points will be initialized with empty data.
 
         Args:
             code_points (CodePoints): The code points to initialize.
@@ -361,8 +481,8 @@ class GlyphSet:
         """
 
         code_points = V.code_points(code_points)
-        for code_point in code_points:
-            self.add_glyph((code_point, ""))
+        glyphs = {cp: Glyph.init_from_hex(cp, "") for cp in code_points}
+        return cls(_glyphs=glyphs)
 
     def get_glyph(self, code_point: CodePoint) -> Glyph:
         """Get a glyph by its code point.
@@ -376,7 +496,7 @@ class GlyphSet:
 
         code_point = V.code_point(code_point)
         try:
-            return self.glyphs[code_point]
+            return self._glyphs[code_point]
         except KeyError as exc:
             raise KeyError(f"Glyph with code point U+{code_point} not found.") from exc
 
@@ -397,7 +517,7 @@ class GlyphSet:
 
                 If `True`, empty glyphs will be skipped.
 
-                If `False`, empty glyphs will be included with empty .hex strings.
+                If `False`, empty glyphs will be included with empty `.hex` strings.
 
         Returns:
             GlyphSet: The obtained set of glyphs.
@@ -406,8 +526,8 @@ class GlyphSet:
         result = GlyphSet()
         code_points = V.code_points(code_points)
         for code_point in code_points:
-            if code_point in self.glyphs:
-                result.add_glyph(self.glyphs[code_point])
+            if code_point in self._glyphs:
+                result.add_glyph(self._glyphs[code_point])
             elif not skip_empty:
                 result.add_glyph((code_point, ""))
         return result
@@ -422,11 +542,11 @@ class GlyphSet:
         """
 
         glyph_obj = self._validate_and_create_glyph(glyph)
-        if glyph_obj.code_point in self.glyphs:
+        if glyph_obj.code_point in self._glyphs:
             raise ValueError(
                 f"Glyph with code point U+{glyph_obj.code_point} already exists."
             )
-        self.glyphs[glyph_obj.code_point] = glyph_obj
+        self._glyphs[glyph_obj.code_point] = glyph_obj
 
     def remove_glyph(self, code_point: CodePoint) -> None:
         """Remove a glyph from the set.
@@ -436,9 +556,9 @@ class GlyphSet:
         """
 
         code_point = V.code_point(code_point)
-        if code_point not in self.glyphs:
+        if code_point not in self._glyphs:
             raise KeyError(f"Glyph with code point U+{code_point} not found.")
-        del self.glyphs[code_point]
+        del self._glyphs[code_point]
 
     def update_glyph(self, glyph: Union[Glyph, Tuple[CodePoint, str]]) -> None:
         """Update a glyph in the set.
@@ -450,16 +570,16 @@ class GlyphSet:
         """
 
         glyph_obj = self._validate_and_create_glyph(glyph)
-        if glyph_obj.code_point not in self.glyphs:
+        if glyph_obj.code_point not in self._glyphs:
             raise KeyError(f"Glyph with code point U+{glyph_obj.code_point} not found.")
-        self.glyphs[glyph_obj.code_point].hex_str = glyph_obj.hex_str
+        self._glyphs[glyph_obj.code_point].hex_str = glyph_obj.hex_str
 
     def sort_glyphs(self) -> None:
         """Sort the glyphs in the set by their code points."""
 
-        if not self.glyphs:
+        if not self._glyphs:
             raise ValueError("Cannot sort an empty glyph set.")
-        self.glyphs = dict(sorted(self.glyphs.items(), key=lambda x: int(x[0], 16)))
+        self._glyphs = dict(sorted(self._glyphs.items(), key=lambda x: int(x[0], 16)))
 
     def _validate_and_create_glyph(
         self, glyph: Union[Glyph, Tuple[CodePoint, str]]
@@ -474,4 +594,105 @@ class GlyphSet:
             return Glyph.init_from_hex(code_point, hex_str)
         raise TypeError(
             "Invalid glyph type. Must be a Glyph or a tuple (code_point, hex_str)."
+        )
+
+    @classmethod
+    def load_hex_file(cls, file_path: FilePath) -> "GlyphSet":
+        """Parse and load a `.hex` file.
+
+        Args:
+            file_path (FilePath): The path to the `.hex` file.
+        """
+
+        print(f"Start loading glyphs from {file_path}...")
+        start_time = time.time()
+
+        file_path = V.file_path(file_path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        glyphs = GlyphSet()
+
+        with file_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                if l := line.strip():
+                    if ":" not in line:
+                        raise ValueError(f"Invalid line in file: {l}")
+                    code_point, hex_str = l.split(":", 1)
+                    glyphs.add_glyph((code_point, hex_str))
+
+        elapsed_time = time.time() - start_time
+        print(
+            f'Loaded {len(glyphs)} glyphs from "{file_path.name}".'
+            f"Time elapsed: {elapsed_time:.2f} s."
+        )
+
+        return glyphs
+
+    def save_hex_file(self, file_path: FilePath) -> None:
+        """Save the glyphs as a `.hex` file.
+
+        Args:
+            file_path (FilePath): The path to the `.hex` file.
+        """
+
+        start_time = time.time()
+
+        file_path = V.file_path(file_path)
+        with file_path.open("w", encoding="utf-8") as f:
+            for code_point, glyph in sorted(self._glyphs.items()):
+                f.write(f"{code_point}:{glyph.hex_str}\n")
+
+        elapsed_time = time.time() - start_time
+        print(
+            f'Saved {len(self._glyphs)} glyphs to "{file_path.name}".'
+            f"Time elapsed: {elapsed_time:.2f} s."
+        )
+
+    def save_unicode_page(self, file_path: FilePath, start: CodePoint = "4E00") -> None:
+        """Save a Unicode page image for Minecraft.
+
+        This function saves a 256px image with each Unicode code point represented by a 16px
+        pixel glyph. The image contains 256 characters at most, starting from the specified
+        Unicode code point.
+
+        Args:
+            file_path (FilePath): The path to the Unicode page file.
+            start (CodePoint, optional): The starting Unicode code point. Defaults to "4E00".
+        """
+
+        start_time = time.time()
+
+        self.sort_glyphs()
+        file_path = V.file_path(file_path)
+        start = int(start, 16) if isinstance(start, str) else start
+
+        img = Img.new("RGBA", (256, 256))
+        position = 0
+        for code_point, glyph in self._glyphs.items():
+            if int(code_point, 16) < start:
+                continue
+
+            if glyph.hex_str:
+                glyph_img = Img.new("RGBA", (16, 16))
+                rgba_data = [
+                    (255, 255, 255, 255) if pixel else (0, 0, 0, 0)
+                    for pixel in C.to_img_data(glyph.hex_str)
+                ]
+                glyph_img.putdata(rgba_data)
+
+                x = (position % 16) * 16
+                y = (position // 16) * 16
+                img.paste(glyph_img, (x, y))
+
+            position += 1
+            if position >= 256:
+                break
+
+        img.save(file_path)
+
+        elapsed_time = time.time() - start_time
+        print(
+            f'Saved {position} glyphs to "{file_path.name}".'
+            f" Time elapsed: {elapsed_time:.2f} s."
         )

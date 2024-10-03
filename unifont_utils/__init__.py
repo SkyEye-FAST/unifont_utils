@@ -2,6 +2,5 @@
 """Unifont Utils Package"""
 
 from .converter import Converter
-from .glyphs import Glyph, GlyphSet
-from .files import load_hex_file, save_hex_file, save_unicode_page
-from .diff import diff_glyphs, print_diff, replace_pattern
+from .glyphs import Glyph, GlyphSet, SearchPattern, ReplacePattern
+from .diff import diff_glyphs, print_diff, replace

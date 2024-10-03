@@ -9,6 +9,7 @@ FilePath: TypeAlias = Union[str, Path]
 CodePoint: TypeAlias = Union[str, int]
 CodePoints: TypeAlias = Union[str, Tuple[CodePoint, CodePoint]]
 
+
 class Validator:
     """Class for validators."""
 
@@ -26,10 +27,13 @@ class Validator:
             ValueError: If the code point is invalid.
         """
 
-        if not isinstance(code_point, (str, int)):
-            raise ValueError("Invalid code point type. Must be a string or integer.")
         if isinstance(code_point, int):
             code_point = hex(code_point)[2:]
+        elif isinstance(code_point, str):
+            pass
+        else:
+            raise ValueError("Invalid code point type. Must be a string or integer.")
+
         if not code_point.isalnum() or len(code_point) >= 7:
             raise ValueError(f"Invalid code point: {code_point}.")
 
@@ -56,15 +60,9 @@ class Validator:
             ValueError: If the code points are invalid.
         """
 
-        if not isinstance(code_points, (str, tuple)):
-            raise TypeError(
-                "Invalid type for the specified code points. "
-                "The argument must be either a string or a tuple."
-            )
-
         if isinstance(code_points, str):
             code_points_list = code_points.split(",")
-        else:
+        elif isinstance(code_points, tuple):
             if len(code_points) != 2:
                 raise ValueError(
                     "The tuple must contain exactly two elements (begin, end)."
@@ -77,6 +75,11 @@ class Validator:
             begin, end = Validator.code_point(begin), Validator.code_point(end)
             code_points_list = range(int(begin, 16), int(end, 16) + 1)
             code_points_list = [hex(i)[2:].zfill(4) for i in code_points_list]
+        else:
+            raise TypeError(
+                "Invalid type for the specified code points. "
+                "The argument must be either a string or a tuple."
+            )
 
         return [Validator.code_point(code_point) for code_point in code_points_list]
 
@@ -122,9 +125,8 @@ class Validator:
             TypeError: If the file path is not a string or a Path object.
         """
 
-        if not isinstance(file_path, (str, Path)):
-            raise TypeError("The file path must be a string or a Path object.")
-
         if isinstance(file_path, str):
             return Path(file_path)
-        return file_path
+        if isinstance(file_path, Path):
+            return file_path
+        raise TypeError("The file path must be a string or a Path object.")

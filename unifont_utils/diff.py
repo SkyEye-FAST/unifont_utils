@@ -5,7 +5,7 @@ from typing import List, Union
 
 from .base import Validator as V
 from .converter import Converter as C
-from .glyphs import Glyph
+from .glyphs import Glyph, SearchPattern, ReplacePattern
 
 
 def get_img_data(glyph: Union[str, Glyph]) -> List[int]:
@@ -115,59 +115,3 @@ def print_diff(
 
     for i in range(16):
         print(f"{get_row(i, a)}\t{get_row_diff(i)}\t{get_row(i, b)}{new_line}")
-
-
-def replace_pattern(
-    img_data: List[int], pattern_a: List[int], pattern_b: List[int], pattern_width: int
-) -> List[int]:
-    """Replaces a pattern in an image with another pattern.
-
-    Args:
-        img_data (List[int]): The image data to be modified.
-        pattern_a (List[int]): The pattern to be replaced.
-        pattern_b (List[int]): The new pattern to replace the old one.
-        pattern_width (int): The width of the patterns.
-
-    Returns:
-        List[int]: The modified image data.
-
-    Raises:
-        ValueError: If the two patterns have different sizes.
-    """
-
-    if len(pattern_a) != len(pattern_b):
-        raise ValueError("The two patterns must have the same size.")
-    image_width = len(img_data) // 16
-    pattern_height = len(pattern_a) // pattern_width
-
-    def match_pattern(
-        img_data: List[int], pattern_a: List[int], i: int, j: int
-    ) -> bool:
-        for y in range(pattern_height):
-            for x in range(pattern_width):
-                if (
-                    pattern_a[y * pattern_width + x] == 1
-                    and img_data[(i + y) * image_width + (j + x)] != 1
-                ):
-                    return False
-        return True
-
-    def apply_new_pattern(
-        img_data: List[int], pattern_a: List[int], pattern_b: List[int], i: int, j: int
-    ) -> None:
-        for y in range(pattern_height):
-            for x in range(pattern_width):
-                if pattern_b[y * pattern_width + x] == 1:
-                    img_data[(i + y) * image_width + (j + x)] = 1
-                elif (
-                    pattern_b[y * pattern_width + x] == 0
-                    and pattern_a[y * pattern_width + x] == 1
-                ):
-                    continue
-
-    for i in range(16 - pattern_height + 1):
-        for j in range(image_width - pattern_width + 1):
-            if match_pattern(img_data, pattern_a, i, j):
-                apply_new_pattern(img_data, pattern_a, pattern_b, i, j)
-
-    return img_data
