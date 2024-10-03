@@ -353,46 +353,41 @@ class Glyph:
             List[int]: The modified image data.
 
         Raises:
-            ValueError: If the two patterns have different sizes.
+            ValueError: If the two patterns have different size.
         """
 
         img_data = self._data.copy()
         pattern_a, pattern_b = search_pattern.data, replace_pattern.data
-        if len(pattern_a) != len(pattern_b):
-            raise ValueError("The two patterns must have same size.")
-        image_width = len(img_data) // 16
-        pattern_height, pattern_width = search_pattern.height, search_pattern.width
 
-        def match_pattern(
-            img_data: List[int], pattern_a: List[int], i: int, j: int
-        ) -> bool:
-            for y in range(pattern_height):
-                for x in range(pattern_width):
+        if len(pattern_a) != len(pattern_b):
+            raise ValueError("The two patterns must have the same size.")
+
+        height = search_pattern.height
+        width = search_pattern.width
+        image_width = len(img_data) // 16
+
+        def match_pattern(i: int, j: int) -> bool:
+            for y in range(height):
+                for x in range(width):
                     if (
-                        pattern_a[y * pattern_width + x] == 1
+                        pattern_a[y * width + x] == 1
                         and img_data[(i + y) * image_width + (j + x)] != 1
                     ):
                         return False
             return True
 
-        def apply_pattern(
-            img_data: List[int], pattern_b: List[int], i: int, j: int
-        ) -> List[int]:
-            for y in range(pattern_height):
-                for x in range(pattern_width):
-                    match pattern_b[y * pattern_width + x]:
-                        case 1:
-                            img_data[(i + y) * image_width + (j + x)] = 1
-                        case 0:
-                            img_data[(i + y) * image_width + (j + x)] = 0
-                        case -1:
-                            continue
-            return img_data
+        def apply_pattern(i: int, j: int) -> None:
+            for y in range(height):
+                for x in range(width):
+                    if pattern_b[y * width + x] == 1:
+                        img_data[(i + y) * image_width + (j + x)] = 1
+                    elif pattern_b[y * width + x] == 0:
+                        img_data[(i + y) * image_width + (j + x)] = 0
 
-        for i in range(16 - pattern_height + 1):
-            for j in range(image_width - pattern_width + 1):
-                if match_pattern(img_data, pattern_a, i, j):
-                    img_data = apply_pattern(img_data, pattern_b, i, j)
+        for i in range(16 - height + 1):
+            for j in range(image_width - width + 1):
+                if match_pattern(i, j):
+                    apply_pattern(i, j)
 
         self._data = img_data
 

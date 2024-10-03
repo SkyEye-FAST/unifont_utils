@@ -5,7 +5,7 @@ from typing import List, Union
 
 from .base import Validator as V
 from .converter import Converter as C
-from .glyphs import Glyph, SearchPattern, ReplacePattern
+from .glyphs import Glyph
 
 
 def get_img_data(glyph: Union[str, Glyph]) -> List[int]:
