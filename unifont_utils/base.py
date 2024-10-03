@@ -24,6 +24,7 @@ class Validator:
             str: The normalized code point if valid.
 
         Raises:
+            TypeError: If the code point is not a string or an integer.
             ValueError: If the code point is invalid.
         """
 
@@ -32,7 +33,7 @@ class Validator:
         elif isinstance(code_point, str):
             pass
         else:
-            raise ValueError("Invalid code point type. Must be a string or integer.")
+            raise TypeError("Invalid code point type. Must be a string or integer.")
 
         if not code_point.isalnum() or int(code_point, 16) > 0x10FFFF:
             raise ValueError(f"Invalid code point: {code_point}.")
