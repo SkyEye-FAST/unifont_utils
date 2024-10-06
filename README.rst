@@ -19,7 +19,7 @@ Feedback
 --------
 
 This project is still in its early stages of development. See the
-`GitHub repository <https://github.com/skyeyefly/unifont-utils>`_ for more
+`GitHub repository <https://github.com/SkyEye-FAST/unifont_utils>`_ for more
 information.
 
 Please feel free to raise issues for any problems encountered or
