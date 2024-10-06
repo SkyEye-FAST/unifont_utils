@@ -3,7 +3,7 @@ Unifont Utils
 
 This project provides a set of tools for working with the Unifont font.
 
-See the documentation at `Read the Docs <https://unifont-utils.readthedocs.io/>`
+See the documentation at `Read the Docs <https://unifont-utils.readthedocs.io/>`_
 for more information.
 
 Installation
@@ -19,7 +19,7 @@ Feedback
 --------
 
 This project is still in its early stages of development. See the
-`GitHub repository <https://github.com/skyeyefly/unifont-utils>` for more
+`GitHub repository <https://github.com/skyeyefly/unifont-utils>`_ for more
 information.
 
 Please feel free to raise issues for any problems encountered or
