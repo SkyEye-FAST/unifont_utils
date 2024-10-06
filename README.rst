@@ -3,6 +3,9 @@ Unifont Utils
 
 This project provides a set of tools for working with the Unifont font.
 
+See the documentation at `Read the Docs <https://unifont-utils.readthedocs.io/>`
+for more information.
+
 Installation
 ------------
 
@@ -14,6 +17,10 @@ Install the package from PyPI using the following command:
 
 Feedback
 --------
+
+This project is still in its early stages of development. See the
+`GitHub repository <https://github.com/skyeyefly/unifont-utils>` for more
+information.
 
 Please feel free to raise issues for any problems encountered or
 feature suggestions.
