@@ -2,12 +2,12 @@
 """Unifont Utils - Base Module"""
 
 from pathlib import Path
-from typing import List, Tuple, Optional, Union, TypeAlias
+from typing import List, Optional, Union, TypeAlias
 
 # Type aliases
 FilePath: TypeAlias = Union[str, Path]
 CodePoint: TypeAlias = Union[str, int]
-CodePoints: TypeAlias = Union[str, Tuple[CodePoint, CodePoint]]
+CodePoints: TypeAlias = Union[List[CodePoint], range]
 
 
 class Validator:
@@ -48,39 +48,28 @@ class Validator:
 
     @staticmethod
     def code_points(code_points: CodePoints) -> List[str]:
-        """Validate a code point string or tuple and return its normalized form.
+        """Validate acode point list and return its normalized form.
 
         Args:
             code_points (CodePoints): The code point string or tuple to validate.
 
         Returns:
-            List[int]: The normalized code point tuple if valid.
+            List[int]: The normalized code point list if valid.
 
         Raises:
-            TypeError: If the code points are not a string or a tuple.
+            TypeError: If the code points are not a list or a `range` object.
             ValueError: If the code points are invalid.
         """
 
-        if isinstance(code_points, str):
-            code_points_list = code_points.split(",")
-        elif isinstance(code_points, tuple):
-            if len(code_points) != 2:
-                raise ValueError(
-                    "The tuple must contain exactly two elements (begin, end)."
-                )
-            begin, end = code_points
-            if not isinstance(begin, (str, int)) or not isinstance(end, (str, int)):
-                raise TypeError(
-                    "The begin and end code points must be strings or integers."
-                )
-            begin, end = Validator.code_point(begin), Validator.code_point(end)
-            code_points_list = range(int(begin, 16), int(end, 16) + 1)
-            code_points_list = [hex(i)[2:].zfill(4) for i in code_points_list]
-        else:
+        if not isinstance(code_points, (list, range)):
             raise TypeError(
                 "Invalid type for the specified code points. "
-                "The argument must be either a string or a tuple."
+                "The argument must be either a list or a range object."
             )
+        if not all(isinstance(c, (str, int)) for c in code_points):
+            raise TypeError("The code points in the list must be strings or integers.")
+
+        code_points_list = [hex(i)[2:].zfill(4) for i in code_points]
 
         return [Validator.code_point(code_point) for code_point in code_points_list]
 

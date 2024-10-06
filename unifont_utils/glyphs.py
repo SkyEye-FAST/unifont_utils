@@ -147,6 +147,12 @@ class Glyph:
             code_point = code_point[1:]
         return f"Unifont Glyph (U+{code_point})"
 
+    def __add__(self, other: "Glyph") -> "GlyphSet":
+        glyphs = GlyphSet()
+        glyphs += self
+        glyphs += other
+        return glyphs
+
     @property
     def code_point(self) -> CodePoint:
         """The code point of the character represented by the glyph."""
@@ -531,10 +537,6 @@ class GlyphSet:
         Args:
             code_points (CodePoints): The code points to initialize.
 
-                If a string is provided, it should be a comma-separated list of code points.
-
-                If a tuple is provided, it should be in the format of `(begin, end)`.
-
                 The code points specified should be hexadecimal number strings or integers.
         """
 
@@ -565,10 +567,6 @@ class GlyphSet:
 
         Args:
             code_points (CodePoints): The code points of the glyphs to get.
-
-                If a string is provided, it should be a comma-separated list of code points.
-
-                If a tuple is provided, it should be in the format of `(begin, end)`.
 
                 The code points specified should be hexadecimal number strings.
             skip_empty (bool, optional): Whether to skip empty glyphs. Defaults to `True`.
