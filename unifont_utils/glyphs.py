@@ -471,7 +471,14 @@ class GlyphSet:
     @property
     def glyphs(self) -> Dict[str, Glyph]:
         """A dictionary of glyphs in the set."""
+        self.sort_glyphs()
         return self._glyphs
+
+    @property
+    def code_points(self) -> List[CodePoint]:
+        """A list of code points of the glyphs in the set."""
+        self.sort_glyphs()
+        return list(self._glyphs.keys())
 
     def __str__(self) -> str:
         if not self._glyphs:
