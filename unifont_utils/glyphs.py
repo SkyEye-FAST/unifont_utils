@@ -4,9 +4,11 @@
 from dataclasses import dataclass, field
 import time
 from unicodedata import name
-from typing import Dict, List, Tuple, Optional, Union
+from typing import Dict, List, Tuple, Iterator, Optional, Union
 
 from PIL import Image as Img
+from rich.console import Console
+from rich.text import Text
 
 from .base import (
     Validator as V,
@@ -32,29 +34,41 @@ class Pattern:
 
     data: List[int]
     """The pattern data."""
-    width: int
+    _width: int
     """The width of the pattern."""
-    height: Optional[int] = None
+    _height: Optional[int] = None
     """The height of the pattern.
     If it is `None`, the height is set to the length of `data` divided by `width`.
     """
 
     def __post_init__(self) -> None:
-        if self.width <= 2:
+        if self._width <= 2:
             raise ValueError("The width must be greater than 2 pixels.")
-        if self.width > 16:
+        if self._width > 16:
             raise ValueError("The width must be less than 16 pixels.")
-        if self.height is None:
-            self.height = len(self.data) // self.width
-            if len(self.data) % self.width != 0:
+        if self._height is None:
+            self._height = len(self.data) // self._width
+            if len(self.data) % self._width != 0:
                 raise ValueError("The length of the data must be divisible by width.")
-            if self.height <= 2:
+            if self._height <= 2:
                 raise ValueError("The height must be greater than 2 pixels.")
-            if self.height > 16:
+            if self._height > 16:
                 raise ValueError("The height must be less than 16 pixels.")
 
     def __str__(self) -> str:
-        return f"Unifont Pattern ({self.width}x{self.height})"
+        return f"Unifont Pattern ({self._width}x{self._height})"
+
+    @property
+    def width(self) -> int:
+        """The width of the pattern."""
+        return self._width
+
+    @property
+    def height(self) -> int:
+        """The height of the pattern."""
+        if self._height is None:
+            self._height = len(self.data) // self._width
+        return self._height
 
     @classmethod
     def init_from_hex(cls, hex_str: str, width: int) -> "Pattern":
@@ -90,12 +104,12 @@ class Pattern:
 
         img = Img.open(img_path).convert("RGBA")
         data = []
-        for pixel in img.getdata():
+        for pixel in img.getdata():  # type: ignore
             if pixel == (255, 255, 255, 255):
                 data.append(0)
             elif pixel == (0, 0, 0, 255):
                 data.append(1)
-            elif pixel[4] == 0:
+            elif pixel == (0, 0, 0, 0):
                 data.append(-1)
             else:
                 raise ValueError(f"Invalid pixel RGBA value: {pixel}")
@@ -111,6 +125,16 @@ class SearchPattern(Pattern):
         if not all(i in {0, 1} for i in self.data):
             raise ValueError("The pattern data must be a list of integers 0 and 1.")
 
+    @classmethod
+    def init_from_hex(cls, hex_str: str, width: int) -> "SearchPattern":
+        p = super().init_from_hex(hex_str, width)
+        return cls(p.data, p.width, p.height)
+
+    @classmethod
+    def init_from_img(cls, img_path: FilePath) -> "SearchPattern":
+        p = super().init_from_img(img_path)
+        return cls(p.data, p.width, p.height)
+
 
 @dataclass
 class ReplacePattern(Pattern):
@@ -122,12 +146,22 @@ class ReplacePattern(Pattern):
                 "The pattern data must be a list of integers 0, 1, and -1."
             )
 
+    @classmethod
+    def init_from_hex(cls, hex_str: str, width: int) -> "ReplacePattern":
+        p = super().init_from_hex(hex_str, width)
+        return cls(p.data, p.width, p.height)
+
+    @classmethod
+    def init_from_img(cls, img_path: FilePath) -> "ReplacePattern":
+        p = super().init_from_img(img_path)
+        return cls(p.data, p.width, p.height)
+
 
 @dataclass
 class Glyph:
     """A class representing a single glyph in Unifont."""
 
-    _code_point: CodePoint
+    _code_point: str
     """The code point of the character represented by the glyph."""
     _width: int = 16
     """The width of the glyph."""
@@ -154,7 +188,7 @@ class Glyph:
         return glyphs
 
     @property
-    def code_point(self) -> CodePoint:
+    def code_point(self) -> str:
         """The code point of the character represented by the glyph."""
         return self._code_point
 
@@ -168,10 +202,21 @@ class Glyph:
         """The `.hex` format string of the glyph."""
         return self._hex_str
 
+    @hex_str.setter
+    def hex_str(self, hex_str: str) -> None:
+        """Set the `.hex` format string of the glyph."""
+        self.load_hex(hex_str)
+
     @property
     def data(self) -> List[int]:
         """The pixel data of the glyph."""
         return self._data
+
+    @data.setter
+    def data(self, data: List[int]) -> None:
+        """Set the pixel data of the glyph."""
+        self._data = data
+        self._hex_str = C.to_hex(data)
 
     @property
     def black_and_white(self) -> bool:
@@ -222,9 +267,9 @@ class Glyph:
         img = Img.open(img_path).convert("1")
         self._width = img.size[0]
         data = (
-            [0 if pixel == 255 else 1 for pixel in img.getdata()]
+            [0 if pixel == 255 else 1 for pixel in img.getdata()]  # type: ignore
             if black_and_white
-            else [1 if pixel == 255 else 0 for pixel in img.getdata()]
+            else [1 if pixel == 255 else 0 for pixel in img.getdata()]  # type: ignore
         )
         self._hex_str = C.to_hex(data)
         self._black_and_white = black_and_white
@@ -274,9 +319,9 @@ class Glyph:
 
         img = Img.open(img_path).convert("1")
         data = (
-            [0 if pixel == 255 else 1 for pixel in img.getdata()]
+            [0 if pixel == 255 else 1 for pixel in img.getdata()]  # type: ignore
             if black_and_white
-            else [1 if pixel == 255 else 0 for pixel in img.getdata()]
+            else [1 if pixel == 255 else 0 for pixel in img.getdata()]  # type: ignore
         )
 
         return cls(
@@ -369,16 +414,13 @@ class Glyph:
                 If `True`, the binary string of each line will be displayed on the left.
         """
 
-        width, height = self._width, 16
+        console = Console()
 
-        if len(self._data) != width * height:
+        if len(self._data) != self._width * 16:
             raise ValueError("Invalid glyph data or size.")
 
-        white_block, black_block, new_line = (
-            "\033[48;5;7m  ",
-            "\033[48;5;0m  ",
-            "\033[0m",
-        )
+        white_block = "white on white"
+        black_block = "black on black"
 
         black_and_white = (
             black_and_white if black_and_white is not None else self._black_and_white
@@ -386,13 +428,16 @@ class Glyph:
         if black_and_white:
             white_block, black_block = black_block, white_block
 
-        hex_length = width // 4 if display_hex else None
+        hex_length = self._width // 4 if display_hex else 0
 
-        for i in range(height):
-            row = "".join(
-                white_block if self._data[i * width + j] else black_block
-                for j in range(width)
-            )
+        for i in range(16):
+            row_text = Text()
+
+            for j in range(self._width):
+                block_style = (
+                    white_block if self._data[i * self._width + j] else black_block
+                )
+                row_text.append("  ", style=block_style)
 
             if display_hex or display_bin:
                 prefix = []
@@ -401,25 +446,22 @@ class Glyph:
                     prefix.append(hex_slice)
                 if display_bin:
                     bin_slice = "".join(
-                        str(self._data[i * width + j]) for j in range(width)
+                        str(self._data[i * self._width + j]) for j in range(16)
                     )
                     prefix.append(bin_slice)
 
-                row = "\t".join(prefix) + "\t" + row
+                row_text = Text("\t".join(prefix) + "\t") + row_text
 
-            print(row + new_line)
+            console.print(row_text)
 
     def replace(
         self, search_pattern: SearchPattern, replace_pattern: ReplacePattern
-    ) -> List[int]:
+    ) -> None:
         """Replaces a pattern in an image with another pattern.
 
         Args:
             search_pattern (SearchPattern): The pattern to be searched.
             replace_pattern (ReplacePattern): The pattern to be replaced.
-
-        Returns:
-            List[int]: The modified image data.
 
         Raises:
             ValueError: If the two patterns have different size.
@@ -484,18 +526,7 @@ class GlyphSet:
         if not self._glyphs:
             return "Unifont Glyph Set (0 glyphs)"
 
-        self.sort_glyphs()
-        code_points = ", ".join(
-            (
-                f"U+{code_point[1:]}"
-                if len(code_point) == 6 and code_point.startswith("0")
-                else f"U+{code_point}"
-            )
-            for code_point in self._glyphs
-        )
-        return (
-            f"Unifont Glyph Set ({len(self._glyphs)} glyphs): {code_points or 'None'}"
-        )
+        return f"Unifont Glyph Set ({len(self._glyphs)} glyphs)"
 
     def __getitem__(self, code_point: CodePoint) -> Glyph:
         return self.get_glyph(code_point)
@@ -508,7 +539,7 @@ class GlyphSet:
 
     def __add__(self, other: Union["GlyphSet", Glyph]) -> "GlyphSet":
         result = GlyphSet()
-        result.glyphs = self._glyphs.copy()
+        result._glyphs = self._glyphs.copy()
         if isinstance(other, Glyph):
             result.add_glyph(other)
         elif isinstance(other, GlyphSet):
@@ -529,7 +560,7 @@ class GlyphSet:
     def __len__(self) -> int:
         return len(self._glyphs)
 
-    def __iter__(self) -> iter:
+    def __iter__(self) -> Iterator[Glyph]:
         return iter(self._glyphs.values())
 
     def __contains__(self, glyph: Union[Glyph, str]) -> bool:
@@ -537,7 +568,7 @@ class GlyphSet:
         return code_point in self._glyphs
 
     @classmethod
-    def init_glyphs(cls, code_points: CodePoints) -> None:
+    def init_glyphs(cls, code_points: CodePoints) -> "GlyphSet":
         """Initialize a set of glyphs.
         All the code points will be initialized with empty data.
 
@@ -547,8 +578,8 @@ class GlyphSet:
                 The code points specified should be hexadecimal number strings or integers.
         """
 
-        code_points = V.code_points(code_points)
-        glyphs = {cp: Glyph.init_from_hex(cp, "") for cp in code_points}
+        code_points_list = V.code_points(code_points)
+        glyphs = {cp: Glyph.init_from_hex(cp, "") for cp in code_points_list}
         return cls(_glyphs=glyphs)
 
     def get_glyph(self, code_point: CodePoint) -> Glyph:
@@ -587,8 +618,8 @@ class GlyphSet:
         """
 
         result = GlyphSet()
-        code_points = V.code_points(code_points)
-        for code_point in code_points:
+        code_points_list = V.code_points(code_points)
+        for code_point in code_points_list:
             if code_point in self._glyphs:
                 result.add_glyph(self._glyphs[code_point])
             elif not skip_empty:

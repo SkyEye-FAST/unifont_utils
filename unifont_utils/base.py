@@ -71,19 +71,19 @@ class Validator:
         if not all(isinstance(c, (str, int)) for c in code_points):
             raise TypeError("The code points in the list must be strings or integers.")
 
-        code_points_list = [hex(i)[2:].zfill(4) for i in list(set(code_points))]
+        code_points_list = [hex(int(i))[2:].zfill(4) for i in list(set(code_points))]
 
         return [Validator.code_point(code_point) for code_point in code_points_list]
 
     @staticmethod
-    def hex_str(hex_str: Optional[str]) -> Optional[str]:
+    def hex_str(hex_str: Optional[str]) -> str:
         """Validate a hexadecimal string and return its normalized form.
 
         Args:
             hex_str (str, optional): The hexadecimal string to validate.
 
         Returns:
-            str, optional: The normalized hexadecimal string if valid.
+            str: The normalized hexadecimal string if valid.
 
         Raises:
             ValueError: If the hexadecimal string is invalid.

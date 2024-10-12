@@ -3,6 +3,10 @@
 
 from typing import List, Union
 
+from rich.console import Console
+from rich.text import Text
+from rich.table import Table
+
 from .base import Validator as V
 from .converter import Converter as C
 from .glyphs import Glyph
@@ -84,34 +88,43 @@ def print_diff(
 
     diff_list = diff_glyphs(glyph_a, glyph_b)
     a, b = get_img_data(glyph_a), get_img_data(glyph_b)
+    console = Console()
 
-    white_block, black_block, add_block, remove_block, new_line = (
-        "\033[48;5;7m  ",  # White
-        "\033[48;5;0m  ",  # Black
-        "\033[48;5;2m  ",  # Green
-        "\033[48;5;1m  ",  # Red
-        "\033[0m",
-    )
+    white_block = "white on white"
+    black_block = "black on black"
 
     if black_and_white:
         white_block, black_block = black_block, white_block
 
     width = len(a) // 16
 
-    def get_row(i: int, data: List[str]) -> str:
+    def get_row(i: int, data: List[int]) -> Text:
+        row_text = Text()
         row_data = data[i * width : (i + 1) * width]
-        return "".join(white_block if pixel else black_block for pixel in row_data)
+        for pixel in row_data:
+            block_style = white_block if pixel else black_block
+            row_text.append("  ", style=block_style)
+        return row_text
 
-    def get_row_diff(i: int) -> str:
+    def get_row_diff(i: int) -> Text:
+        row_text = Text()
         row_diff = {
-            "+": add_block,
-            "-": remove_block,
+            "+": "green on green",
+            "-": "red on red",
             "1": white_block,
             "0": black_block,
         }
-        return "".join(
-            row_diff[element] for element in diff_list[i * width : (i + 1) * width]
-        )
+        for element in diff_list[i * width : (i + 1) * width]:
+            block_style = row_diff.get(str(element), black_block)
+            row_text.append("  ", style=block_style)
+        return row_text
+
+    table = Table(show_lines=False, expand=False)
+    table.add_column("Input")
+    table.add_column("Diff")
+    table.add_column("Output")
 
     for i in range(16):
-        print(f"{get_row(i, a)}\t{get_row_diff(i)}\t{get_row(i, b)}{new_line}")
+        table.add_row(get_row(i, a), get_row_diff(i), get_row(i, b))
+
+    console.print(table)
