@@ -21,7 +21,7 @@ class GlyphWidget(Static, can_focus=True):
         ("s", "move_down", "Move Down"),
         ("a", "move_left", "Move Left"),
         ("d", "move_right", "Move Right"),
-        ("space", "toggle_glyph", "Toggle Glyph"),
+        ("space", "toggle_glyph", "Toggle Visibility"),
         ("q", "quit", "Quit"),
     ]
 
@@ -65,7 +65,7 @@ class GlyphWidget(Static, can_focus=True):
                     )
                 text.append(char, style=block_style)
             text.append("\n")
-        text.append(f"{self.cursor_x}, {self.cursor_y}\n")
+        text.append(f"Position: ({self.cursor_x}, {self.cursor_y})\n")
         self.update(text)
 
     def action_move_up(self) -> None:
@@ -100,15 +100,6 @@ class GlyphEditor(App):
 
     glyph: Glyph
     CSS_PATH = "editor.tcss"
-
-    BINDINGS = [
-        ("w", "move_up", "Move Up"),
-        ("s", "move_down", "Move Down"),
-        ("a", "move_left", "Move Left"),
-        ("d", "move_right", "Move Right"),
-        ("space", "toggle_glyph", "Toggle Glyph"),
-        ("q", "quit", "Quit"),
-    ]
 
     def __init__(self, glyph: Glyph) -> None:
         super().__init__()
