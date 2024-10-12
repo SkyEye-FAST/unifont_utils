@@ -2,12 +2,14 @@
 """Unifont Utils - Base Module"""
 
 from pathlib import Path
-from typing import List, Optional, Union, TypeAlias
+from typing import List, Set, Tuple, Optional, Union, TypeAlias
 
 # Type aliases
 FilePath: TypeAlias = Union[str, Path]
 CodePoint: TypeAlias = Union[str, int]
-CodePoints: TypeAlias = Union[List[CodePoint], range]
+CodePoints: TypeAlias = Union[
+    List[CodePoint], Set[CodePoint], Tuple[CodePoint, ...], range
+]
 
 
 class Validator:
@@ -57,11 +59,11 @@ class Validator:
             List[int]: The normalized code point list if valid.
 
         Raises:
-            TypeError: If the code points are not a list or a `range` object.
+            TypeError: If the code points are not a list, a set, or a `range` object.
             ValueError: If the code points are invalid.
         """
 
-        if not isinstance(code_points, (list, range)):
+        if not isinstance(code_points, (list, set, range)):
             raise TypeError(
                 "Invalid type for the specified code points. "
                 "The argument must be either a list or a range object."
@@ -69,7 +71,7 @@ class Validator:
         if not all(isinstance(c, (str, int)) for c in code_points):
             raise TypeError("The code points in the list must be strings or integers.")
 
-        code_points_list = [hex(i)[2:].zfill(4) for i in code_points]
+        code_points_list = [hex(i)[2:].zfill(4) for i in list(set(code_points))]
 
         return [Validator.code_point(code_point) for code_point in code_points_list]
 
