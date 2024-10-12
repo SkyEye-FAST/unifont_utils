@@ -2,14 +2,13 @@
 """Unifont Utils - Base Module"""
 
 from pathlib import Path
-from typing import List, Set, Tuple, Optional, Union, TypeAlias
+from typing import List, Set, Optional, Union, TypeAlias
+from collections.abc import Sequence
 
 # Type aliases
 FilePath: TypeAlias = Union[str, Path]
 CodePoint: TypeAlias = Union[str, int]
-CodePoints: TypeAlias = Union[
-    List[CodePoint], Set[CodePoint], Tuple[CodePoint, ...], range
-]
+CodePoints: TypeAlias = Union[Sequence[CodePoint], Set[CodePoint]]
 
 
 class Validator:
@@ -63,7 +62,7 @@ class Validator:
             ValueError: If the code points are invalid.
         """
 
-        if not isinstance(code_points, (list, set, range)):
+        if not isinstance(code_points, (Sequence, set)):
             raise TypeError(
                 "Invalid type for the specified code points. "
                 "The argument must be either a list or a range object."
