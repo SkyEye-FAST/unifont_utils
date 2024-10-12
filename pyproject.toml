@@ -20,7 +20,6 @@ classifiers = [
 python = ">=3.8"
 pillow = "^10"
 textual = "^0.80.0"
-rich = "^13"
 
 
 [build-system]

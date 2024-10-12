@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-"""Unifont Utils - Edit"""
+"""Unifont Utils - Editor"""
 
 from rich.text import Text
 from textual.app import App, ComposeResult
@@ -17,10 +17,10 @@ class GlyphWidget(Static, can_focus=True):
     glyph: Glyph
 
     BINDINGS = [
-        ("w", "move_up", "Move Up"),
-        ("s", "move_down", "Move Down"),
-        ("a", "move_left", "Move Left"),
-        ("d", "move_right", "Move Right"),
+        ("w,up", "move_up", "Move Up"),
+        ("s,down", "move_down", "Move Down"),
+        ("a,left", "move_left", "Move Left"),
+        ("d,right", "move_right", "Move Right"),
         ("space", "toggle_glyph", "Toggle Visibility"),
         ("q", "quit", "Quit"),
     ]
