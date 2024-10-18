@@ -2,6 +2,8 @@
 """Unifont Utils - Editor"""
 
 from rich.text import Text
+from rich.panel import Panel
+from rich.console import Group
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, Static
 from textual.reactive import reactive
@@ -44,29 +46,45 @@ class GlyphWidget(Static, can_focus=True):
 
     def render_glyph(self):
         """Render the glyph with the current cursor position."""
-        text = Text()
+
+        def get_color(i):
+            return "white" if i % 2 == 0 else ("green" if i > 9 else "red")
+
+        def get_block_style(is_cursor, data_value):
+            if is_cursor:
+                return "red on white" if data_value else "red on black"
+            return "white on white" if data_value else "black on black"
+
+        def get_nums(i):
+            return hex(i)[2:].rjust(2).upper()
+
         width = self.glyph.width
+        glyph = Text("\n  ")
+        for i in range(width):
+            glyph.append(get_nums(i), style=f"{get_color(i)} bold")
+        glyph.append("\n")
         for i in range(16):
+            glyph.append(f"{get_nums(i)} ", style=f"{get_color(i)} bold")
             for j in range(width):
-                x = j % width
-                if self.cursor_x == x and self.cursor_y == i:
-                    char = "⬥ "
-                    block_style = (
-                        "blue on white"
-                        if self.glyph.data[i * width + j]
-                        else "blue on black"
-                    )
-                else:
-                    char = "  "
-                    block_style = (
-                        "white on white"
-                        if self.glyph.data[i * width + j]
-                        else "black on black"
-                    )
-                text.append(char, style=block_style)
-            text.append("\n")
-        text.append(f"Position: ({self.cursor_x}, {self.cursor_y})\n")
-        self.update(text)
+                is_cursor = self.cursor_x == j % width and self.cursor_y == i
+                block_style = get_block_style(is_cursor, self.glyph.data[i * width + j])
+                char = "⬥ " if is_cursor else "  "
+                glyph.append(char, style=block_style)
+            glyph.append("\n")
+        position = Text(
+            f"Position: ({self.cursor_x}, {self.cursor_y})",
+            justify="center",
+            style="bold",
+        )
+
+        panel = Panel(
+            glyph,
+            title=f"U+{self.glyph.code_point} ({self.glyph.character})",
+            subtitle=position,
+        )
+        self.update(
+            Group(Text(self.glyph.unicode_name, justify="center", style="bold"), panel)
+        )
 
     def action_move_up(self) -> None:
         """Move the cursor up."""
