@@ -50,7 +50,7 @@ class EditWidget(Static, can_focus=True):
 
         def get_color(i: int) -> str:
             """Get color based on index."""
-            return "white" if i % 2 == 0 else ("green" if i > 9 else "red")
+            return "auto" if i % 2 == 0 else ("green" if i > 9 else "red")
 
         def get_block_style(is_cursor: bool, data_value: int) -> str:
             """Get style for the glyph block."""
@@ -198,7 +198,7 @@ class ReplaceWidget(Static, can_focus=True):
 
         def get_color(i: int) -> str:
             """Get color based on index."""
-            return "white" if i % 2 == 0 else ("green" if i > 9 else "red")
+            return "auto" if i % 2 == 0 else ("green" if i > 9 else "red")
 
         def get_block_style(i: int, j: int, current_match: Tuple[int, int]) -> str:
 
