@@ -12,7 +12,7 @@ from textual.reactive import reactive
 from .glyphs import Glyph
 
 
-class GlyphWidget(Static, can_focus=True):
+class EditWidget(Static, can_focus=True):
     """Widget to display and edit a Glyph."""
 
     cursor_x = reactive(0)
@@ -38,7 +38,7 @@ class GlyphWidget(Static, can_focus=True):
         self.focus()
 
     def watch_cursor_x(self) -> None:
-        """Watch for changes to the cursor_x or cursor_y attribute."""
+        """Watch for changes to the `cursor_x` or `cursor_y` attribute."""
         self.render_glyph()
 
     watch_cursor_y = watch_cursor_x
@@ -170,4 +170,4 @@ class GlyphEditor(App):
         """Create child widgets for the app."""
         yield Header()
         yield Footer()
-        yield GlyphWidget(self.glyph)
+        yield EditWidget(self.glyph)

@@ -2,7 +2,8 @@ Screen {
     align: center middle;
 }
 
-GlyphWidget {
+EditWidget,
+ReplaceWidget {
     width: auto;
     height: auto;
 }

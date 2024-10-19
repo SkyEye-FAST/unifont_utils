@@ -495,17 +495,80 @@ class Glyph:
         def apply_pattern(i: int, j: int) -> None:
             for y in range(height):
                 for x in range(width):
-                    if pattern_b[y * width + x] == 1:
-                        img_data[(i + y) * image_width + (j + x)] = 1
-                    elif pattern_b[y * width + x] == 0:
-                        img_data[(i + y) * image_width + (j + x)] = 0
+                    pixel = pattern_b[y * width + x]
+                    index = (i + y) * image_width + (j + x)
+                    if pixel == 1:
+                        img_data[index] = 1
+                    elif pixel == 0:
+                        img_data[index] = 0
 
         for i in range(16 - height + 1):
             for j in range(image_width - width + 1):
                 if match_pattern(i, j):
                     apply_pattern(i, j)
 
-        self._data = img_data
+        self.data = img_data
+
+    def find_matches(self, search_pattern: SearchPattern) -> List[Tuple[int, int]]:
+        """Finds all matches of a pattern in the image.
+
+        Args:
+            search_pattern (SearchPattern): The pattern to be searched.
+
+        Returns:
+            List[Tuple[int, int]]: List of coordinates where the pattern is found.
+        """
+
+        pattern_a = search_pattern.data
+
+        height = search_pattern.height
+        width = search_pattern.width
+        image_width = len(self._data) // 16
+        matches = []
+
+        def match_pattern(i: int, j: int) -> bool:
+            for y in range(height):
+                for x in range(width):
+                    if (
+                        pattern_a[y * width + x] == 1
+                        and self._data[(i + y) * image_width + (j + x)] != 1
+                    ):
+                        return False
+            return True
+
+        for i in range(16 - height + 1):
+            for j in range(image_width - width + 1):
+                if match_pattern(i, j):
+                    matches.append((i, j))
+
+        return matches
+
+    def apply_pattern(self, i: int, j: int, replace_pattern: ReplacePattern) -> None:
+        """Apply the replacement pattern at the specified coordinates.
+
+        Args:
+            i (int): The row coordinate where the pattern starts.
+            j (int): The column coordinate where the pattern starts.
+            replace_pattern (ReplacePattern): The pattern to replace with.
+        """
+
+        img_data = self._data.copy()
+        pattern_b = replace_pattern.data
+
+        height = replace_pattern.height
+        width = replace_pattern.width
+        image_width = len(img_data) // 16
+
+        for y in range(height):
+            for x in range(width):
+                pixel = pattern_b[y * width + x]
+                index = (i + y) * image_width + (j + x)
+                if pixel == 1:
+                    img_data[index] = 1
+                elif pixel == 0:
+                    img_data[index] = 0
+
+        self.data = img_data
 
 
 @dataclass
