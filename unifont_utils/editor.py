@@ -205,7 +205,7 @@ class ReplaceWidget(Static, can_focus=True):
             return "auto" if i % 2 == 0 else ("green" if i > 9 else "red")
 
         def get_pixel_color(value: int) -> str:
-            if value:
+            if value == 1:
                 return "white" if self.app.dark else "black"
             return "black" if self.app.dark else "white"
 
