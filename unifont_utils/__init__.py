@@ -4,5 +4,4 @@
 from .converter import Converter
 from .glyphs import Glyph, GlyphSet, SearchPattern, ReplacePattern
 from .diff import diff_glyphs, print_diff
-from .editor import GlyphEditor
-from .replacer import GlyphReplacer
+from .editor import GlyphEditor, GlyphReplacer
