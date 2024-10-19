@@ -7,6 +7,8 @@
 
 此项目提供一系列用于处理Unifont字体的工具。
 
+**更多信息请见[Read the Docs上的文档](https://unifont-utils.readthedocs.io/)。**
+
 ## 安装
 
 请使用下面的命令从PyPI安装Unifont Utils：
