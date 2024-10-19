@@ -153,7 +153,7 @@ class GlyphWidget(Static, can_focus=True):
 
     def on_mouse_move(self, event: events.MouseMove) -> None:
         """Handle mouse move events."""
-        self.handle_mouse_event(event, update_data=True if event.button else False)
+        self.handle_mouse_event(event, update_data=bool(event.button))
 
 
 class GlyphEditor(App):
