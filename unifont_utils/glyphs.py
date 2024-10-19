@@ -71,23 +71,6 @@ class Pattern:
         return self._height
 
     @classmethod
-    def init_from_hex(cls, hex_str: str, width: int) -> "Pattern":
-        """Create a new Pattern object from a `.hex` format string.
-
-        Args:
-            hex_str (str): The `.hex` format string of the glyph.
-            width (int): The width of the pattern.
-
-        Returns:
-            Pattern: The created Pattern object.
-        """
-
-        hex_str = V.hex_str(hex_str)
-        data = C.to_img_data(hex_str, width)
-
-        return cls(data, width)
-
-    @classmethod
     def init_from_img(cls, img_path: FilePath) -> "Pattern":
         """Create a new Pattern object from an image file.
 
@@ -126,11 +109,6 @@ class SearchPattern(Pattern):
             raise ValueError("The pattern data must be a list of integers 0 and 1.")
 
     @classmethod
-    def init_from_hex(cls, hex_str: str, width: int) -> "SearchPattern":
-        p = super().init_from_hex(hex_str, width)
-        return cls(p.data, p.width, p.height)
-
-    @classmethod
     def init_from_img(cls, img_path: FilePath) -> "SearchPattern":
         p = super().init_from_img(img_path)
         return cls(p.data, p.width, p.height)
@@ -145,11 +123,6 @@ class ReplacePattern(Pattern):
             raise ValueError(
                 "The pattern data must be a list of integers 0, 1, and -1."
             )
-
-    @classmethod
-    def init_from_hex(cls, hex_str: str, width: int) -> "ReplacePattern":
-        p = super().init_from_hex(hex_str, width)
-        return cls(p.data, p.width, p.height)
 
     @classmethod
     def init_from_img(cls, img_path: FilePath) -> "ReplacePattern":
