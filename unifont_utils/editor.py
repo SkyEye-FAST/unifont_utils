@@ -4,6 +4,7 @@
 from rich.text import Text
 from rich.panel import Panel
 from rich.console import Group
+from textual import events
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, Static
 from textual.reactive import reactive
@@ -69,7 +70,7 @@ class GlyphWidget(Static, can_focus=True):
         for i in range(16):
             # Rows
             glyph.append(f"{get_nums(i)} ", style=f"{get_color(i)} bold")
-            # Glyph blocks
+            # Glyph pixel blocks
             for j in range(width):
                 is_cursor = self.cursor_x == j % width and self.cursor_y == i
                 block_style = get_block_style(is_cursor, self.glyph.data[i * width + j])
@@ -122,6 +123,19 @@ class GlyphWidget(Static, can_focus=True):
     def action_quit(self) -> None:
         """Quit the application."""
         self.app.exit()
+
+    def on_mouse_down(self, event: events.MouseDown) -> None:
+        """Handle mouse click events."""
+
+        x, y = event.x, event.y
+        grid_x = (x - 5) // 2
+        grid_y = y - 4
+
+        if 0 <= grid_x < self.glyph.width and 0 <= grid_y < 16:
+            self.cursor_x = grid_x
+            self.cursor_y = grid_y
+
+        self.render_glyph()
 
 
 class GlyphEditor(App):
