@@ -50,10 +50,12 @@ class Pattern:
             self._height = len(self.data) // self._width
             if len(self.data) % self._width != 0:
                 raise ValueError("The length of the data must be divisible by width.")
-            if self._height <= 2:
-                raise ValueError("The height must be greater than 2 pixels.")
-            if self._height > 16:
-                raise ValueError("The height must be less than 16 pixels.")
+        if self._height * self._width!= len(self.data):
+            raise ValueError("The length of the data must be equal to width * height.")
+        if self._height <= 2:
+            raise ValueError("The height must be greater than 2 pixels.")
+        if self._height > 16:
+            raise ValueError("The height must be less than 16 pixels.")
 
     def __str__(self) -> str:
         return f"Unifont Pattern ({self._width}x{self._height})"
