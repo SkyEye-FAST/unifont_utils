@@ -157,6 +157,7 @@ class EditWidget(Static, can_focus=True):
         """Handle mouse move events."""
         self._handle_mouse_event(event, update_data=bool(event.button))
 
+
 class ReplaceWidget(Static, can_focus=True):
     """Widget to display and edit a Glyph."""
 
@@ -275,6 +276,7 @@ class ReplaceWidget(Static, can_focus=True):
         """Quit the application."""
         self.app.exit()
 
+
 class GlyphEditor(App):
     """Main application for editing a glyph."""
 
@@ -290,6 +292,7 @@ class GlyphEditor(App):
         yield Header()
         yield Footer()
         yield EditWidget(self.glyph)
+
 
 class GlyphReplacer(App):
     """Main application for replacing patterns in a glyph."""
