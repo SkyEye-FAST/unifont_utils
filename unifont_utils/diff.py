@@ -34,7 +34,7 @@ def get_img_data(glyph: Union[str, Glyph]) -> List[int]:
     raise TypeError("The glyph must be either a .hex string or a Glyph object.")
 
 
-def diff_glyphs(glyph_a: Union[str, Glyph], glyph_b: Union[str, Glyph]) -> List[int]:
+def diff_glyphs(glyph_a: Union[str, Glyph], glyph_b: Union[str, Glyph]) -> List[str]:
     """Compares two glyphs and returns a list of differences.
 
     Args:
@@ -42,7 +42,7 @@ def diff_glyphs(glyph_a: Union[str, Glyph], glyph_b: Union[str, Glyph]) -> List[
         glyph_b (Union[str, Glyph]): The second glyph to compare.
 
     Returns:
-        List[int]: A list of differences between the two glyphs.
+        List[str]: A list of differences between the two glyphs.
 
     Raises:
         ValueError: If the two glyphs have different sizes.

@@ -449,6 +449,10 @@ class Glyph:
 
         img_data = self._data.copy()
         pattern_a, pattern_b = search_pattern.data, replace_pattern.data
+        if search_pattern.width > self._width:
+            raise ValueError("The pattern to be searched is larger than the glyph.")
+        if replace_pattern.width > self._width:
+            raise ValueError("The pattern to be replaced is larger than the glyph.")
 
         if len(pattern_a) != len(pattern_b):
             raise ValueError("The two patterns must have the same size.")
@@ -494,6 +498,8 @@ class Glyph:
             List[Tuple[int, int]]: List of coordinates where the pattern is found.
         """
 
+        if search_pattern.width > self._width:
+            raise ValueError("The pattern to be searched is larger than the glyph.")
         pattern_a = search_pattern.data
 
         height = search_pattern.height
@@ -527,6 +533,12 @@ class Glyph:
             replace_pattern (ReplacePattern): The pattern to replace with.
         """
 
+        if replace_pattern.width > self._width:
+            raise ValueError("The pattern to be replaced is larger than the glyph.")
+        if i < 0 or i + replace_pattern.height > 16:
+            raise ValueError("The pattern is out of bounds.")
+        if j < 0 or j + replace_pattern.width > self._width:
+            raise ValueError("The pattern is out of bounds.")
         img_data = self._data.copy()
         pattern_b = replace_pattern.data
 
