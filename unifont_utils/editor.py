@@ -22,11 +22,11 @@ class EditWidget(Static, can_focus=True):
     glyph: Glyph
 
     BINDINGS = [
-        ("w,up", "move_up", "Move Up"),
-        ("s,down", "move_down", "Move Down"),
-        ("a,left", "move_left", "Move Left"),
-        ("d,right", "move_right", "Move Right"),
-        ("space", "toggle_glyph", "Toggle Visibility"),
+        ("w,up", "move_up", "Up"),
+        ("s,down", "move_down", "Down"),
+        ("a,left", "move_left", "Left"),
+        ("d,right", "move_right", "Right"),
+        ("space", "toggle_glyph", "Toggle 0/1"),
         ("q", "quit", "Quit"),
     ]
 
@@ -52,11 +52,15 @@ class EditWidget(Static, can_focus=True):
             """Get color based on index."""
             return "auto" if i % 2 == 0 else ("green" if i > 9 else "red")
 
+        def get_pixel_color(value: int) -> str:
+            if value:
+                return "white" if self.app.dark else "black"
+            return "black" if self.app.dark else "white"
+
         def get_block_style(is_cursor: bool, data_value: int) -> str:
             """Get style for the glyph block."""
-            if is_cursor:
-                return "red on white" if data_value else "red on black"
-            return "white on white" if data_value else "black on black"
+            pixel = get_pixel_color(data_value)
+            return f"{'red' if is_cursor else pixel} on {pixel}"
 
         def get_nums(i: int) -> str:
             """Get the hexadecimal representation of index."""
@@ -166,8 +170,8 @@ class ReplaceWidget(Static, can_focus=True):
     glyph: Glyph
 
     BINDINGS = [
-        ("a,left", "prev", "Previous Match"),
-        ("d,right", "next", "Next Match"),
+        ("a,left", "prev", "Previous"),
+        ("d,right", "next", "Next"),
         ("space", "apply", "Apply"),
         ("q", "quit", "Quit"),
     ]
@@ -200,6 +204,11 @@ class ReplaceWidget(Static, can_focus=True):
             """Get color based on index."""
             return "auto" if i % 2 == 0 else ("green" if i > 9 else "red")
 
+        def get_pixel_color(value: int) -> str:
+            if value:
+                return "white" if self.app.dark else "black"
+            return "black" if self.app.dark else "white"
+
         def get_block_style(i: int, j: int, current_match: Tuple[int, int]) -> str:
 
             width = self.glyph.width
@@ -209,14 +218,12 @@ class ReplaceWidget(Static, can_focus=True):
 
             if current_match and x <= i < x + h and y <= j < y + w:
                 pixel = self.replace_pattern.data[(i - x) * w + (j - y)]
+                pixel_color = get_pixel_color(pixel)
                 if pixel == 1:
                     return "green on green"
-                return "black on black"
-            return (
-                "white on white"
-                if self.glyph.data[i * width + j] == 1
-                else "black on black"
-            )
+                return f"{pixel_color} on {pixel_color}"
+            pixel_color = get_pixel_color(self.glyph.data[i * width + j])
+            return f"{pixel_color} on {pixel_color}"
 
         def get_nums(i: int) -> str:
             """Get the hexadecimal representation of index."""
@@ -288,16 +295,20 @@ class GlyphEditor(App):
     def __init__(self, glyph: Glyph) -> None:
         super().__init__()
         self.glyph = glyph
+        self.edit_widget = None
 
     def action_toggle_dark(self) -> None:
         """An action to toggle dark mode."""
         self.dark = not self.dark
+        if self.edit_widget:
+            self.edit_widget.render_glyph()
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
         yield Header()
         yield Footer()
-        yield EditWidget(self.glyph)
+        self.edit_widget = EditWidget(self.glyph)
+        yield self.edit_widget
 
 
 class GlyphReplacer(App):
@@ -318,13 +329,19 @@ class GlyphReplacer(App):
         self.glyph = glyph
         self.search_pattern = search_pattern
         self.replace_pattern = replace_pattern
+        self.replace_widget = None
 
     def action_toggle_dark(self) -> None:
         """An action to toggle dark mode."""
         self.dark = not self.dark
+        if self.replace_widget:
+            self.replace_widget.render_glyph()
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
         yield Header()
         yield Footer()
-        yield ReplaceWidget(self.glyph, self.search_pattern, self.replace_pattern)
+        self.replace_widget = ReplaceWidget(
+            self.glyph, self.search_pattern, self.replace_pattern
+        )
+        yield self.replace_widget
