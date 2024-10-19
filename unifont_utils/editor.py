@@ -93,6 +93,10 @@ class GlyphWidget(Static, can_focus=True):
             Group(Text(self.glyph.unicode_name, justify="center", style="bold"), panel)
         )
 
+    def get_index(self) -> int:
+        """Get the index of the current cursor position."""
+        return self.cursor_y * self.glyph.width + self.cursor_x
+
     def move_cursor(self, dx: int, dy: int) -> None:
         """Move cursor by the given offsets."""
         self.cursor_x = min(max(0, self.cursor_x + dx), self.glyph.width - 1)
@@ -124,8 +128,8 @@ class GlyphWidget(Static, can_focus=True):
         """Quit the application."""
         self.app.exit()
 
-    def on_mouse_down(self, event: events.MouseDown) -> None:
-        """Handle mouse click events."""
+    def handle_mouse_event(self, event, update_data: bool = False) -> None:
+        """Handle mouse events for click and movement."""
 
         grid_x = (event.x - 5) // 2
         grid_y = event.y - 4
@@ -135,18 +139,22 @@ class GlyphWidget(Static, can_focus=True):
             self.cursor_y = grid_y
 
             index = self.get_index()
-            # Left click
-            if event.button == 1 and not event.ctrl:
-                self.glyph.data[index] = 1
-            # Right click or Ctrl+Left click
-            elif event.button == 3 or (event.button == 1 and event.ctrl):
-                self.glyph.data[index] = 0
+            if update_data:
+                if event.button == 1 and not event.ctrl:
+                    self.glyph.data[index] = 1
+                elif event.button == 3 or (event.button == 1 and event.ctrl):
+                    self.glyph.data[index] = 0
 
             self.render_glyph()
 
-    def get_index(self) -> int:
-        """Get the index of the current cursor position."""
-        return self.cursor_y * self.glyph.width + self.cursor_x
+    def on_mouse_down(self, event: events.MouseDown) -> None:
+        """Handle mouse click events."""
+        self.handle_mouse_event(event, update_data=True)
+
+    def on_mouse_move(self, event: events.MouseMove) -> None:
+        """Handle mouse move events."""
+        self.handle_mouse_event(event, update_data=True if event.button else False)
+
 
 class GlyphEditor(App):
     """Main application for editing a glyph."""
