@@ -210,13 +210,18 @@ class Glyph:
     @property
     def data(self) -> List[int]:
         """The pixel data of the glyph."""
-        return self._data
+        return self._data[:]
 
     @data.setter
     def data(self, data: List[int]) -> None:
         """Set the pixel data of the glyph."""
         self._data = data
         self._hex_str = C.to_hex(data)
+
+    def update_data_at_index(self, index: int, value: int) -> None:
+        """Update the pixel data at a specific index."""
+        self._data[index] = value
+        self._hex_str = C.to_hex(self._data)
 
     @property
     def black_and_white(self) -> bool:

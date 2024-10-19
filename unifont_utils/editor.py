@@ -93,42 +93,42 @@ class GlyphWidget(Static, can_focus=True):
             Group(Text(self.glyph.unicode_name, justify="center", style="bold"), panel)
         )
 
-    def get_index(self) -> int:
+    def _get_index(self) -> int:
         """Get the index of the current cursor position."""
         return self.cursor_y * self.glyph.width + self.cursor_x
 
-    def move_cursor(self, dx: int, dy: int) -> None:
+    def _move_cursor(self, dx: int, dy: int) -> None:
         """Move cursor by the given offsets."""
         self.cursor_x = min(max(0, self.cursor_x + dx), self.glyph.width - 1)
         self.cursor_y = min(max(0, self.cursor_y + dy), 15)
 
     def action_move_up(self) -> None:
         """Move the cursor up."""
-        self.move_cursor(0, -1)
+        self._move_cursor(0, -1)
 
     def action_move_down(self) -> None:
         """Move the cursor down."""
-        self.move_cursor(0, 1)
+        self._move_cursor(0, 1)
 
     def action_move_left(self) -> None:
         """Move the cursor left."""
-        self.move_cursor(-1, 0)
+        self._move_cursor(-1, 0)
 
     def action_move_right(self) -> None:
         """Move the cursor right."""
-        self.move_cursor(1, 0)
+        self._move_cursor(1, 0)
 
     def action_toggle_glyph(self) -> None:
         """Toggle the glyph's visibility."""
-        index = self.get_index()
-        self.glyph.data[index] = int(not self.glyph.data[index])
+        index = self._get_index()
+        self.glyph.update_data_at_index(index, int(not self.glyph.data[index]))
         self.render_glyph()
 
     def action_quit(self) -> None:
         """Quit the application."""
         self.app.exit()
 
-    def handle_mouse_event(self, event, update_data: bool = False) -> None:
+    def _handle_mouse_event(self, event, update_data: bool = False) -> None:
         """Handle mouse events for click and movement."""
 
         grid_x = (event.x - 5) // 2
@@ -138,22 +138,22 @@ class GlyphWidget(Static, can_focus=True):
             self.cursor_x = grid_x
             self.cursor_y = grid_y
 
-            index = self.get_index()
+            index = self._get_index()
             if update_data:
                 if event.button == 1 and not event.ctrl:
-                    self.glyph.data[index] = 1
+                    self.glyph.update_data_at_index(index, 1)
                 elif event.button == 3 or (event.button == 1 and event.ctrl):
-                    self.glyph.data[index] = 0
+                    self.glyph.update_data_at_index(index, 0)
 
             self.render_glyph()
 
     def on_mouse_down(self, event: events.MouseDown) -> None:
         """Handle mouse click events."""
-        self.handle_mouse_event(event, update_data=True)
+        self._handle_mouse_event(event, update_data=True)
 
     def on_mouse_move(self, event: events.MouseMove) -> None:
         """Handle mouse move events."""
-        self.handle_mouse_event(event, update_data=bool(event.button))
+        self._handle_mouse_event(event, update_data=bool(event.button))
 
 
 class GlyphEditor(App):
