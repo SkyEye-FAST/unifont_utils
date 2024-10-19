@@ -116,7 +116,7 @@ class GlyphWidget(Static, can_focus=True):
 
     def action_toggle_glyph(self) -> None:
         """Toggle the glyph's visibility."""
-        index = self.cursor_y * self.glyph.width + self.cursor_x
+        index = self.get_index()
         self.glyph.data[index] = int(not self.glyph.data[index])
         self.render_glyph()
 
@@ -127,16 +127,26 @@ class GlyphWidget(Static, can_focus=True):
     def on_mouse_down(self, event: events.MouseDown) -> None:
         """Handle mouse click events."""
 
-        x, y = event.x, event.y
-        grid_x = (x - 5) // 2
-        grid_y = y - 4
+        grid_x = (event.x - 5) // 2
+        grid_y = event.y - 4
 
         if 0 <= grid_x < self.glyph.width and 0 <= grid_y < 16:
             self.cursor_x = grid_x
             self.cursor_y = grid_y
 
-        self.render_glyph()
+            index = self.get_index()
+            # Left click
+            if event.button == 1 and not event.ctrl:
+                self.glyph.data[index] = 1
+            # Right click or Ctrl+Left click
+            elif event.button == 3 or (event.button == 1 and event.ctrl):
+                self.glyph.data[index] = 0
 
+            self.render_glyph()
+
+    def get_index(self) -> int:
+        """Get the index of the current cursor position."""
+        return self.cursor_y * self.glyph.width + self.cursor_x
 
 class GlyphEditor(App):
     """Main application for editing a glyph."""
