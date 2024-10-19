@@ -1,0 +1,39 @@
+name: Build
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.13"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v2
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Build the packages
+        run: poetry build
+
+      - name: Get version from pyproject.toml
+        id: get_version
+        run: echo "VERSION=$(grep -oP '(?<=version = ")[^"]+' pyproject.toml)" >> $GITHUB_ENV
+
+      - name: Upload the built packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: unifont-utils-${{ env.VERSION }}
+          path: |
+            dist/unifont_utils-${{ env.VERSION }}-py3-none-any.whl
+            dist/unifont_utils-${{ env.VERSION }}.tar.gz
