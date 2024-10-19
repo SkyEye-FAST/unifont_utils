@@ -47,15 +47,15 @@ class GlyphWidget(Static, can_focus=True):
     def render_glyph(self):
         """Render the glyph with the current cursor position."""
 
-        def get_color(i):
+        def get_color(i: int):
             return "white" if i % 2 == 0 else ("green" if i > 9 else "red")
 
-        def get_block_style(is_cursor, data_value):
+        def get_block_style(is_cursor: bool, data_value: int):
             if is_cursor:
                 return "red on white" if data_value else "red on black"
             return "white on white" if data_value else "black on black"
 
-        def get_nums(i):
+        def get_nums(i: int):
             return hex(i)[2:].rjust(2).upper()
 
         width = self.glyph.width
