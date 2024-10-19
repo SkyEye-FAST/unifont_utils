@@ -283,9 +283,15 @@ class GlyphEditor(App):
     glyph: Glyph
     CSS_PATH = "editor.tcss"
 
+    BINDINGS = [("ctrl+d", "toggle_dark", "Toggle Dark Mode")]
+
     def __init__(self, glyph: Glyph) -> None:
         super().__init__()
         self.glyph = glyph
+
+    def action_toggle_dark(self) -> None:
+        """An action to toggle dark mode."""
+        self.dark = not self.dark
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
@@ -300,6 +306,8 @@ class GlyphReplacer(App):
     glyph: Glyph
     CSS_PATH = "editor.tcss"
 
+    BINDINGS = [("ctrl+d", "toggle_dark", "Toggle Dark Mode")]
+
     def __init__(
         self,
         glyph: Glyph,
@@ -310,6 +318,10 @@ class GlyphReplacer(App):
         self.glyph = glyph
         self.search_pattern = search_pattern
         self.replace_pattern = replace_pattern
+
+    def action_toggle_dark(self) -> None:
+        """An action to toggle dark mode."""
+        self.dark = not self.dark
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
