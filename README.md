@@ -1,5 +1,8 @@
 # Unifont Utils
 
+[![Build](https://github.com/SkyEye-FAST/unifont_utils/actions/workflows/build.yml/badge.svg)](https://github.com/SkyEye-FAST/unifont_utils/actions/workflows/build.yml) ![PyPI - Version](https://img.shields.io/pypi/v/unifont_utils)
+ ![GitHub Release](https://img.shields.io/github/v/release/SkyEye-FAST/unifont_utils)
+
 - **[English](README.md) | [中文](README_zh.md)**
 
 This project provides a set of tools for working with the Unifont font.
