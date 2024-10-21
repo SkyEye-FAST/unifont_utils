@@ -50,7 +50,7 @@ class Pattern:
             self._height = len(self.data) // self._width
             if len(self.data) % self._width != 0:
                 raise ValueError("The length of the data must be divisible by width.")
-        if self._height * self._width!= len(self.data):
+        if self._height * self._width != len(self.data):
             raise ValueError("The length of the data must be equal to width * height.")
         if self._height <= 2:
             raise ValueError("The height must be greater than 2 pixels.")
@@ -396,9 +396,6 @@ class Glyph:
 
         console = Console()
 
-        if len(self._data) != self._width * 16:
-            raise ValueError("Invalid glyph data or size.")
-
         white_block = "white on white"
         black_block = "black on black"
 
@@ -430,7 +427,7 @@ class Glyph:
                     )
                     prefix.append(bin_slice)
 
-                row_text = Text("\t".join(prefix) + "\t") + row_text
+                row_text = Text(f"{str("\t".join(prefix))}\t").append_text(row_text)
 
             console.print(row_text)
 
@@ -772,7 +769,7 @@ class GlyphSet:
 
         elapsed_time = time.time() - start_time
         print(
-            f'Loaded {len(glyphs)} glyphs from "{file_path.name}".'
+            f'Loaded {len(glyphs)} glyphs from "{file_path.name}". '
             f"Time elapsed: {elapsed_time:.2f} s."
         )
 
@@ -794,7 +791,7 @@ class GlyphSet:
 
         elapsed_time = time.time() - start_time
         print(
-            f'Saved {len(self._glyphs)} glyphs to "{file_path.name}".'
+            f'Saved {len(self._glyphs)} glyphs to "{file_path.name}". '
             f"Time elapsed: {elapsed_time:.2f} s."
         )
 
@@ -842,6 +839,6 @@ class GlyphSet:
 
         elapsed_time = time.time() - start_time
         print(
-            f'Saved {position} glyphs to "{file_path.name}".'
-            f" Time elapsed: {elapsed_time:.2f} s."
+            f'Saved {position} glyphs to "{file_path.name}". '
+            f"Time elapsed: {elapsed_time:.2f} s."
         )
