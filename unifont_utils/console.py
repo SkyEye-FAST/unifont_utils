@@ -36,7 +36,9 @@ def edit():
 @click.option(
     "--code_point", "--cp", required=True, type=str, help="The code point to edit."
 )
-@click.option("--output", default=None, help="Output file path for the edited font.")
+@click.option(
+    "--output", "-o", default=None, help="Output file path for the edited font."
+)
 def hexfile(font_path, code_point, output):
     """Edit a code point in the Unifont .hex file."""
 
@@ -92,11 +94,82 @@ def empty(code_point, width):
     glyph.print_glyph(display_hex=True, display_bin=True)
 
 
+@cli.group()
+def convert():
+    """Convert between Unifont formats."""
+
+
+@convert.command()
+@click.option(
+    "--hex_str",
+    "--hex",
+    required=True,
+    type=str,
+    help="The .hex format string to convert.",
+)
+@click.option(
+    "--output",
+    "-o",
+    required=True,
+    type=click.Path(),
+    help="The output image path.",
+)
+@click.option(
+    "--img_format",
+    "---format",
+    "-f",
+    default="PNG",
+    type=str,
+    help="The output image format.",
+)
+@click.option(
+    "--black_and_white/--not_black_and_white",
+    "--bw/--nbw",
+    "/--transparent_and_white",
+    default=True,
+    is_flag=True,
+    help="Whether the output image is a black and white image.",
+)
+def hex2img(hex_str, output, img_format, black_and_white):
+    """Convert a .hex format string to a image."""
+
+    Glyph.init_from_hex(0, hex_str).save_img(
+        output, img_format=img_format, black_and_white=black_and_white
+    )
+    click.echo(f"Output saved to: {output}")
+
+
+@convert.command()
+@click.option(
+    "--img_path",
+    "--path",
+    "-p",
+    required=True,
+    type=click.Path(exists=True),
+    help="The path to the input image.",
+)
+@click.option(
+    "--black_and_white/--not_black_and_white",
+    "--bw/--nbw",
+    "/--transparent_and_white",
+    default=True,
+    is_flag=True,
+    help="Whether the input image is a black and white image.",
+)
+def img2hex(img_path, black_and_white):
+    """Convert a image to a .hex format string."""
+
+    click.echo(f"Loading image: {img_path}\n")
+    glyph = Glyph.init_from_img(0, img_path, black_and_white=black_and_white)
+    click.echo(f"Result: {glyph.hex_str}")
+
+
 @cli.command()
 def info():
     """Show information about Unipie."""
 
-    click.echo("Unipie v0.1.0")
+    click.echo("Unipie - Unifont Pixel Interactive Editor\n")
+    click.echo("Unipie v0.1.1")
     click.echo("Written by SkyEye_FAST")
 
 
