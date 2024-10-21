@@ -20,6 +20,7 @@ classifiers = [
 python = ">=3.9,<4.0"
 pillow = ">=10.0"
 textual = ">=0.80.0"
+click = ">=8.1.0"
 
 [tool.poetry.scripts]
 unipie = 'unifont_utils.console:cli'
