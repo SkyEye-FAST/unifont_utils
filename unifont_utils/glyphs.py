@@ -138,7 +138,7 @@ class Glyph:
 
     _code_point: str
     """The code point of the character represented by the glyph."""
-    _width: int = 16
+    _width: int = field(default_factory=int)
     """The width of the glyph."""
     _hex_str: str = field(default_factory=str)
     """The `.hex` format string of the glyph."""
@@ -170,11 +170,15 @@ class Glyph:
     @property
     def width(self) -> int:
         """The width of the glyph."""
+        if not self._width and self.hex_str:
+            self._width = 16 if len(self.hex_str) == 64 else 8
         return self._width
 
     @property
     def hex_str(self) -> str:
         """The `.hex` format string of the glyph."""
+        if not self._hex_str and self.data:
+            self._hex_str = C.to_hex(self.data)
         return self._hex_str
 
     @hex_str.setter
@@ -185,6 +189,8 @@ class Glyph:
     @property
     def data(self) -> List[int]:
         """The pixel data of the glyph."""
+        if not self._data and self.hex_str:
+            self._data = C.to_img_data(self.hex_str, self.width)
         return self._data[:]
 
     @data.setter
@@ -192,6 +198,7 @@ class Glyph:
         """Set the pixel data of the glyph."""
         self._data = data
         self._hex_str = C.to_hex(data)
+        self._width = 16 if len(self._hex_str) == 64 else 8
 
     def update_data_at_index(self, index: int, value: int) -> None:
         """Update the pixel data at a specific index."""
@@ -268,10 +275,8 @@ class Glyph:
 
         code_point = V.code_point(code_point)
         hex_str = V.hex_str(hex_str)
-        width = 16 if len(hex_str) == 64 else 8
-        data = C.to_img_data(hex_str, width)
 
-        return cls(code_point, _hex_str=hex_str, _width=width, _data=data)
+        return cls(code_point, _hex_str=hex_str)
 
     @classmethod
     def init_from_img(
@@ -307,7 +312,6 @@ class Glyph:
         return cls(
             code_point,
             _hex_str=C.to_hex(data),
-            _data=data,
             _width=img.size[0],
             _black_and_white=black_and_white,
         )
@@ -342,12 +346,12 @@ class Glyph:
             raise ValueError(
                 "Invalid image format. The image format must be PNG or BMP."
             )
-        if len(self._data) != self._width * 16:
+        if len(self.data) != self.width * 16:
             raise ValueError("Invalid glyph data or size.")
 
-        img = Img.new("RGBA", (self._width, 16))
+        img = Img.new("RGBA", (self.width, 16))
         black_and_white = (
-            black_and_white if black_and_white is not None else self._black_and_white
+            black_and_white if black_and_white is not None else self.black_and_white
         )
         if img_format == "BMP":
             black_and_white = True
@@ -356,10 +360,10 @@ class Glyph:
                 "The image will be saved as a black and white image."
             )
         data = (
-            [(0, 0, 0, 255) if pixel else (255, 255, 255, 255) for pixel in self._data]
+            [(0, 0, 0, 255) if pixel else (255, 255, 255, 255) for pixel in self.data]
             if black_and_white
             else [
-                (255, 255, 255, 255) if pixel else (0, 0, 0, 0) for pixel in self._data
+                (255, 255, 255, 255) if pixel else (0, 0, 0, 0) for pixel in self.data
             ]
         )
         img.putdata(data)
@@ -400,34 +404,37 @@ class Glyph:
         black_block = "black on black"
 
         black_and_white = (
-            black_and_white if black_and_white is not None else self._black_and_white
+            black_and_white if black_and_white is not None else self.black_and_white
         )
         if black_and_white:
             white_block, black_block = black_block, white_block
 
-        hex_length = self._width // 4 if display_hex else 0
+        hex_length = self.width // 4 if display_hex else 0
 
         for i in range(16):
             row_text = Text()
 
-            for j in range(self._width):
-                block_style = (
-                    white_block if self._data[i * self._width + j] else black_block
+            for j in range(self.width):
+                row_text.append(
+                    "  ",
+                    style=(
+                        white_block if self.data[i * self.width + j] else black_block
+                    ),
                 )
-                row_text.append("  ", style=block_style)
 
             if display_hex or display_bin:
                 prefix = []
                 if display_hex:
-                    hex_slice = self._hex_str[i * hex_length : (i + 1) * hex_length]
+                    hex_slice = self.hex_str[i * hex_length : (i + 1) * hex_length]
                     prefix.append(hex_slice)
                 if display_bin:
                     bin_slice = "".join(
-                        str(self._data[i * self._width + j]) for j in range(16)
+                        str(self.data[i * self.width + j]) for j in range(self.width)
                     )
                     prefix.append(bin_slice)
 
-                row_text = Text(f"{str("\t".join(prefix))}\t").append_text(row_text)
+                prefix_text = "\t".join(prefix)
+                row_text = Text(f"{prefix_text}\t").append_text(row_text)
 
             console.print(row_text)
 
@@ -444,11 +451,11 @@ class Glyph:
             ValueError: If the two patterns have different size.
         """
 
-        img_data = self._data.copy()
+        img_data = self.data
         pattern_a, pattern_b = search_pattern.data, replace_pattern.data
-        if search_pattern.width > self._width:
+        if search_pattern.width > self.width:
             raise ValueError("The pattern to be searched is larger than the glyph.")
-        if replace_pattern.width > self._width:
+        if replace_pattern.width > self.width:
             raise ValueError("The pattern to be replaced is larger than the glyph.")
 
         if len(pattern_a) != len(pattern_b):
@@ -495,13 +502,13 @@ class Glyph:
             List[Tuple[int, int]]: List of coordinates where the pattern is found.
         """
 
-        if search_pattern.width > self._width:
+        if search_pattern.width > self.width:
             raise ValueError("The pattern to be searched is larger than the glyph.")
         pattern_a = search_pattern.data
 
         height = search_pattern.height
         width = search_pattern.width
-        image_width = len(self._data) // 16
+        image_width = len(self.data) // 16
         matches = []
 
         def match_pattern(i: int, j: int) -> bool:
@@ -509,7 +516,7 @@ class Glyph:
                 for x in range(width):
                     if (
                         pattern_a[y * width + x] == 1
-                        and self._data[(i + y) * image_width + (j + x)] != 1
+                        and self.data[(i + y) * image_width + (j + x)] != 1
                     ):
                         return False
             return True
@@ -530,13 +537,13 @@ class Glyph:
             replace_pattern (ReplacePattern): The pattern to replace with.
         """
 
-        if replace_pattern.width > self._width:
+        if replace_pattern.width > self.width:
             raise ValueError("The pattern to be replaced is larger than the glyph.")
         if i < 0 or i + replace_pattern.height > 16:
             raise ValueError("The pattern is out of bounds.")
-        if j < 0 or j + replace_pattern.width > self._width:
+        if j < 0 or j + replace_pattern.width > self.width:
             raise ValueError("The pattern is out of bounds.")
-        img_data = self._data.copy()
+        img_data = self.data.copy()
         pattern_b = replace_pattern.data
 
         height = replace_pattern.height
@@ -758,7 +765,6 @@ class GlyphSet:
             raise FileNotFoundError(f"File not found: {file_path}")
 
         glyphs = GlyphSet()
-
         with file_path.open("r", encoding="utf-8") as f:
             for line in f:
                 if l := line.strip():
