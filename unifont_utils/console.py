@@ -116,25 +116,23 @@ def convert():
 )
 @click.option(
     "--img_format",
-    "---format",
+    "--format",
     "-f",
     default="PNG",
     type=str,
     help="The output image format.",
 )
 @click.option(
-    "--black_and_white/--not_black_and_white",
-    "--bw/--nbw",
-    "/--transparent_and_white",
-    default=True,
-    is_flag=True,
-    help="Whether the output image is a black and white image.",
+    "--color_scheme",
+    default="black_and_white",
+    type=str,
+    help="The color scheme for the output image.",
 )
-def hex2img(hex_str, output, img_format, black_and_white):
+def hex2img(hex_str, output, img_format, color_scheme):
     """Convert a .hex format string to a image."""
 
     Glyph.init_from_hex(0, hex_str).save_img(
-        output, img_format=img_format, black_and_white=black_and_white
+        output, img_format=img_format, color_scheme=color_scheme
     )
     click.echo(f"Output saved to: {output}")
 
@@ -149,18 +147,24 @@ def hex2img(hex_str, output, img_format, black_and_white):
     help="The path to the input image.",
 )
 @click.option(
-    "--black_and_white/--not_black_and_white",
-    "--bw/--nbw",
-    "/--transparent_and_white",
-    default=True,
+    "--auto_detect",
     is_flag=True,
-    help="Whether the input image is a black and white image.",
+    default=False,
+    type=bool,
+    help="Whether to automatically detect the color scheme from the image.",
 )
-def img2hex(img_path, black_and_white):
+@click.option(
+    "--color_scheme",
+    type=str,
+    help="The color scheme for the output image.",
+)
+def img2hex(img_path, auto_detect, color_scheme):
     """Convert a image to a .hex format string."""
 
     click.echo(f"Loading image: {img_path}\n")
-    glyph = Glyph.init_from_img(0, img_path, black_and_white=black_and_white)
+    glyph = Glyph.init_from_img(
+        0, img_path, color_auto_detect=auto_detect, color_scheme=color_scheme
+    )
     click.echo(f"Result: {glyph.hex_str}")
 
 
@@ -169,7 +173,7 @@ def info():
     """Show information about Unipie."""
 
     click.echo("Unipie - Unifont Pixel Interactive Editor\n")
-    click.echo("Unipie v0.1.1")
+    click.echo("Unipie v0.2.0")
     click.echo("Written by SkyEye_FAST")
 
 
