@@ -18,6 +18,16 @@ from .base import (
 )
 from .converter import Converter as C
 
+COLOR_MAP = {
+    "white": (255, 255, 255, 255),
+    "black": (0, 0, 0, 255),
+    "transparent": (0, 0, 0, 0),
+}
+COLOR_VALUE_MAP = {
+    (255, 255, 255, 255): "white",
+    (0, 0, 0, 255): "black",
+    (0, 0, 0, 0): "transparent",
+}
 
 @dataclass
 class Pattern:
@@ -132,6 +142,40 @@ class ReplacePattern(Pattern):
         return cls(p.data, p.width, p.height)
 
 
+class ColorScheme:
+    """A class to represent a color scheme."""
+
+    _scheme_name: str
+    """The name of the color scheme."""
+    _color_map: Dict[int, str]
+    """The color map of the color scheme."""
+    _available_schemes = {
+        "black_and_white": {"white": 0, "black": 1},
+        "inverted_black_and_white": {"black": 0, "white": 1},
+        "transparent_and_black": {"transparent": 0, "black": 1},
+        "transparent_and_white": {"transparent": 0, "white": 1},
+    }
+
+    def __init__(self, scheme_name: str = "black_and_white") -> None:
+        if scheme_name not in self._available_schemes:
+            raise ValueError(f"Invalid color scheme: {scheme_name}")
+        self._scheme_name = scheme_name
+        self._color_map = self._available_schemes[scheme_name]
+
+    def __str__(self) -> str:
+        return f"Unifont Color Scheme ({self._color_map})"
+
+    @property
+    def name(self) -> str:
+        """The name of the color scheme."""
+        return self._scheme_name
+
+    @property
+    def color_map(self) -> Dict[int, str]:
+        """The color map of the color scheme."""
+        return self._color_map
+
+
 @dataclass
 class Glyph:
     """A class representing a single glyph in Unifont."""
@@ -144,8 +188,8 @@ class Glyph:
     """The `.hex` format string of the glyph."""
     _data: List[int] = field(default_factory=list)
     """The pixel data of the glyph."""
-    _black_and_white: bool = True
-    """Whether the glyph is loaded from a black and white image."""
+    _color_scheme: ColorScheme = ColorScheme()
+    """The color scheme of the glyph."""
 
     def __post_init__(self) -> None:
         self._code_point = V.code_point(self._code_point)
@@ -206,9 +250,54 @@ class Glyph:
         self._hex_str = C.to_hex(self._data)
 
     @property
-    def black_and_white(self) -> bool:
-        """Whether the glyph is loaded from a black and white image."""
-        return self._black_and_white
+    def color_scheme(self) -> ColorScheme:
+        """The color scheme of the glyph."""
+        return self._color_scheme
+
+    @color_scheme.setter
+    def color_scheme(self, scheme: Union[str, ColorScheme]) -> None:
+        """Set the color scheme of the glyph."""
+        self._color_scheme = self._validate_and_create_color_scheme(scheme)
+
+    def _validate_and_create_color_scheme(
+        self, color_scheme: Union[str, ColorScheme]
+    ) -> ColorScheme:
+        """Helper function to validate and create a ColorScheme object."""
+        if isinstance(color_scheme, str):
+            return ColorScheme(color_scheme)
+        if isinstance(color_scheme, ColorScheme):
+            return color_scheme
+        raise TypeError("Invalid color scheme type. Must be a string or a ColorScheme.")
+
+    @staticmethod
+    def _auto_detect_color_scheme(
+        width: int, rgba_values: List[Tuple[int, int, int, int]]
+    ) -> str:
+        """Helper function to automatically detect the color scheme of the glyph."""
+
+        valid_rgba_values = {(0, 0, 0, 255), (255, 255, 255, 255), (0, 0, 0, 0)}
+
+        if not all(pixel in valid_rgba_values for pixel in rgba_values):
+            raise ValueError("Invalid pixel RGBA values.")
+
+        existed_colors = set(rgba_values)
+        if len(existed_colors) == 3:
+            raise ValueError("Invalid pixel RGBA values.")
+
+        background_color_value = rgba_values[width - 1]
+        background_color =COLOR_VALUE_MAP[background_color_value]
+        existed_colors.remove(background_color_value)
+        foreground_color = COLOR_VALUE_MAP[existed_colors.pop()]
+
+        if background_color == "black" and foreground_color == "white":
+            return "inverted_black_and_white"
+        if background_color == "white" and foreground_color == "black":
+            return "black_and_white"
+        if background_color == "transparent" and foreground_color == "white":
+            return "transparent_and_white"
+        if background_color == "transparent" and foreground_color == "black":
+            return "transparent_and_black"
+        raise ValueError("Invalid pixel RGBA values.")
 
     @property
     def character(self) -> str:
@@ -236,30 +325,50 @@ class Glyph:
         self._width = width
         self._data = C.to_img_data(hex_str, width)
 
-    def load_img(self, img_path: FilePath, black_and_white: bool = True) -> None:
+    def load_img(
+        self,
+        img_path: FilePath,
+        *,
+        color_auto_detect: bool = True,
+        color_scheme: Optional[Union[str, ColorScheme]] = None,
+    ) -> None:
         """Load an image file.
         Args:
             img_path (FilePath): The path to the image file.
-            black_and_white (bool, optional): Whether it is a black and white image.
+            color_auto_detect (bool, optional): Whether to automatically detect the color scheme.
 
-                If `True`, `0` is white and `1` is black.
+                Defaults to `True`.
+            color_scheme (Union[str, ColorScheme], optional): The color scheme of the glyph.
 
-                If `False`, `0` is transparent and `1` is white.
+        Raises:
+            ValueError: If the color scheme is invalid.
+            FileNotFoundError: If the image file is not found.
         """
 
+        if color_scheme is None and not color_auto_detect:
+            raise ValueError(
+                "You must specify a color scheme if automatic detection is disabled."
+            )
+        if color_scheme is not None:
+            color_auto_detect = False
+            color_scheme = self._validate_and_create_color_scheme(color_scheme)
         img_path = V.file_path(img_path)
         if not img_path.is_file():
             raise FileNotFoundError(f"File not found: {img_path}")
 
-        img = Img.open(img_path).convert("1")
+        img = Img.open(img_path).convert("RGBA")
+        rgba_values = list(img.getdata())
+        if color_auto_detect:
+            try:
+                color_scheme = self._auto_detect_color_scheme(img.size[0], rgba_values)
+                color_scheme = self._validate_and_create_color_scheme(color_scheme)
+            except ValueError as e:
+                print(f"Warning: {e}. The glyph will not be changed.")
+                return
+        self.color_scheme = color_scheme
         self._width = img.size[0]
-        data = (
-            [0 if pixel == 255 else 1 for pixel in img.getdata()]  # type: ignore
-            if black_and_white
-            else [1 if pixel == 255 else 0 for pixel in img.getdata()]  # type: ignore
-        )
+        data = [color_scheme.color_map[COLOR_VALUE_MAP[pixel]] for pixel in rgba_values]
         self._hex_str = C.to_hex(data)
-        self._black_and_white = black_and_white
 
     @classmethod
     def init_from_hex(cls, code_point: CodePoint, hex_str: str) -> "Glyph":
@@ -280,47 +389,38 @@ class Glyph:
 
     @classmethod
     def init_from_img(
-        cls, code_point: CodePoint, img_path: FilePath, black_and_white: bool = True
+        cls,
+        code_point: CodePoint,
+        img_path: FilePath,
+        *,
+        color_auto_detect: bool = True,
+        color_scheme: Optional[Union[str, ColorScheme]] = None,
     ) -> "Glyph":
         """Create a new Glyph object from a code point and an image file.
 
         Args:
             code_point (CodePoint): The code point of the character represented by the glyph.
             img_path (FilePath): The path to the image file.
-            black_and_white (bool, optional): Whether it is a black and white image.
+            color_auto_detect (bool, optional): Whether to automatically detect the color scheme.
 
-                If `True`, `0` is white and `1` is black.
-
-                If `False`, `0` is transparent and `1` is white.
+                Defaults to `True`.
+            color_scheme (Union[str, ColorScheme], optional): The color scheme of the glyph.
 
         Returns:
             Glyph: The created glyph object.
         """
 
-        code_point = V.code_point(code_point)
-        img_path = V.file_path(img_path)
-        if not img_path.is_file():
-            raise FileNotFoundError(f"File not found: {img_path}")
-
-        img = Img.open(img_path).convert("1")
-        data = (
-            [0 if pixel == 255 else 1 for pixel in img.getdata()]  # type: ignore
-            if black_and_white
-            else [1 if pixel == 255 else 0 for pixel in img.getdata()]  # type: ignore
+        g = cls(code_point)
+        g.load_img(
+            img_path, color_auto_detect=color_auto_detect, color_scheme=color_scheme
         )
-
-        return cls(
-            code_point,
-            _hex_str=C.to_hex(data),
-            _width=img.size[0],
-            _black_and_white=black_and_white,
-        )
+        return g
 
     def save_img(
         self,
         save_path: FilePath,
         img_format: str = "PNG",
-        black_and_white: Optional[bool] = None,
+        color_scheme: Optional[Union[str, ColorScheme]] = None,
     ) -> None:
         """Save Unifont glyphs as PNG images.
 
@@ -350,42 +450,36 @@ class Glyph:
             raise ValueError("Invalid glyph data or size.")
 
         img = Img.new("RGBA", (self.width, 16))
-        black_and_white = (
-            black_and_white if black_and_white is not None else self.black_and_white
+        color_scheme = (
+            self._validate_and_create_color_scheme(color_scheme)
+            if color_scheme is not None
+            else self.color_scheme
         )
         if img_format == "BMP":
-            black_and_white = True
+            if color_scheme.name == "transparent_and_black":
+                color_scheme = ColorScheme("black_and_white")
+            elif color_scheme.name == "transparent_and_white":
+                color_scheme = ColorScheme("inverted_black_and_white")
             print(
                 "Warning: BMP format does not support transparency. "
                 "The image will be saved as a black and white image."
             )
-        data = (
-            [(0, 0, 0, 255) if pixel else (255, 255, 255, 255) for pixel in self.data]
-            if black_and_white
-            else [
-                (255, 255, 255, 255) if pixel else (0, 0, 0, 0) for pixel in self.data
-            ]
-        )
+        color_dict =  {v: k for k, v in color_scheme.color_map.items()}
+        data = [COLOR_MAP[color_dict[pixel]] for pixel in self.data]
         img.putdata(data)
         img.save(save_path, img_format)
 
     def print_glyph(
         self,
         *,
-        black_and_white: Optional[bool] = None,
+        color_scheme: Optional[Union[str, ColorScheme]] = None,
         display_hex: bool = False,
         display_bin: bool = False,
     ) -> None:
         """Print a Unifont glyph to the console.
 
         Args:
-            black_and_white (bool, optional): Whether it is a black and white image.
-
-                Defaults to the one specified during class initialization.
-
-                If `True`, `0` is white and `1` is black.
-
-                If `False`, `0` is transparent and `1` is white.
+            color_scheme (Union[str, ColorScheme], optional): The color scheme of the glyph.
             display_hex (bool, optional): Whether to display the hexadecimal strings.
 
                 Defaults to `False`.
@@ -403,10 +497,12 @@ class Glyph:
         white_block = "white on white"
         black_block = "black on black"
 
-        black_and_white = (
-            black_and_white if black_and_white is not None else self.black_and_white
+        color_scheme = (
+            self._validate_and_create_color_scheme(color_scheme)
+            if color_scheme is not None
+            else self.color_scheme
         )
-        if black_and_white:
+        if color_scheme.name in {"inverted_black_and_white", "transparent_and_black"}:
             white_block, black_block = black_block, white_block
 
         hex_length = self.width // 4 if display_hex else 0
