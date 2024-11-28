@@ -22,4 +22,4 @@ pip install unifont_utils
 
 Please feel free to raise issues for any problems encountered or feature suggestions.
 
-Pull requests are welcome.
+Pull requests are  welcome.
