@@ -1,4 +1,6 @@
 # -*- encoding: utf-8 -*-
+# @Author: SkyEye_FAST <skyeyefast@foxmail.com>
+# @Copyright: Copyright (C) 2024-2025 SkyEye_FAST
 """Unifont Utils - Glyphs"""
 
 from dataclasses import dataclass, field
