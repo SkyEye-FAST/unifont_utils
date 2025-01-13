@@ -2,8 +2,7 @@
 """Unifont Utils - Base Module"""
 
 from pathlib import Path
-from typing import List, Set, Optional, Union, TypeAlias
-from collections.abc import Sequence
+from typing import List, Set, Optional, Union, TypeAlias, Sequence
 
 # Type aliases
 FilePath: TypeAlias = Union[str, Path]
@@ -13,6 +12,8 @@ CodePoints: TypeAlias = Union[Sequence[CodePoint], Set[CodePoint]]
 
 class Validator:
     """Class for validators."""
+
+    HEX_CHARS = set("0123456789ABCDEF")
 
     @staticmethod
     def code_point(code_point: CodePoint) -> str:
@@ -31,18 +32,15 @@ class Validator:
 
         if isinstance(code_point, int):
             code_point = hex(code_point)[2:]
-        elif isinstance(code_point, str):
-            pass
-        else:
+        elif not isinstance(code_point, str):
             raise TypeError("Invalid code point type. Must be a string or integer.")
 
         if not code_point.isalnum() or int(code_point, 16) > 0x10FFFF:
             raise ValueError(f"Invalid code point: {code_point}.")
 
         code_point = code_point.upper()
-
         for c in code_point:
-            if c not in "0123456789ABCDEF":
+            if c not in Validator.HEX_CHARS:
                 raise ValueError(f"Invalid character in code point: {c}.")
 
         return code_point.zfill(6 if len(code_point) > 4 else 4)
@@ -97,7 +95,7 @@ class Validator:
             )
 
         for c in hex_str:
-            if c not in "0123456789ABCDEF":
+            if c not in Validator.HEX_CHARS:
                 raise ValueError(f"Invalid character in .hex string: {c}.")
 
         return hex_str.upper()

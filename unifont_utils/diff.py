@@ -48,23 +48,16 @@ def diff_glyphs(glyph_a: Union[str, Glyph], glyph_b: Union[str, Glyph]) -> List[
         ValueError: If the two glyphs have different sizes.
     """
 
-    a, b = get_img_data(glyph_a), get_img_data(glyph_b)
+    a, b = map(get_img_data, (glyph_a, glyph_b))
     if len(a) != len(b):
         raise ValueError("The two glyphs must have the same size.")
 
-    diff_list = []
-    for i, j in zip(a, b):
-        if i and not j:
-            diff_list.append("-")
-        elif not i and j:
-            diff_list.append("+")
-        elif i and j:
-            diff_list.append("1")
-        else:
-            diff_list.append("0")
-
-    return diff_list
-
+    return [
+        "+" if not i and j else
+        "-" if i and not j else
+        "1" if i and j else "0"
+        for i, j in zip(a, b)
+    ]
 
 def print_diff(
     glyph_a: Union[str, Glyph],

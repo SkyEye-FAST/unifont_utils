@@ -1,7 +1,6 @@
 # -*- encoding: utf-8 -*-
 """Unifont Utils - Converter"""
 
-from functools import reduce
 from typing import List
 
 
@@ -27,8 +26,8 @@ class Converter:
                 "Unable to convert to .hex string. The glyph data is empty."
             )
 
-        n = reduce(lambda acc, pixel: (acc << 1) | (1 if pixel else 0), data, 0)
-        return hex(n)[2:].upper().zfill(32 if len(data) == 128 else 64)
+        n = sum((pixel & 1) << i for i, pixel in enumerate(reversed(data)))
+        return f"{n:X}".zfill(32 if len(data) == 128 else 64)
 
     @staticmethod
     def to_img_data(hex_str: str, width: int = 16, height: int = 16) -> List[int]:
