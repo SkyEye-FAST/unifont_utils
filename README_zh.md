@@ -21,11 +21,25 @@ pip install unifont_utils
 
 ## 协议
 
-本项目是自由软件：你可以根据自由软件基金会发布的GNU通用公共许可证的条款，即许可证的第3版或（按你的决定）任何更新版重新发布它和/或修改它。
+本项目在[GPL v3协议](LICENSE)下发布。
 
-发布这一程序的目的是希望它有用，但没有任何担保。甚至没有适合特定目的而隐含的担保。更详细的情况请参阅GNU通用公共许可证。
+``` text
+    Unifont Utils
+    Copyright (C) 2024-2025 SkyEye_FAST
 
-你应该已经收到一份GNU通用公共许可证的副本。如果还没有，请查阅<https://www.gnu.org/licenses/>。
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+```
 
 ## 反馈
 
