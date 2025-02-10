@@ -1,19 +1,16 @@
-# -*- encoding: utf-8 -*-
 # @Author: SkyEye_FAST <skyeyefast@foxmail.com>
 # @Copyright: Copyright (C) 2024-2025 SkyEye_FAST
 """Unifont Utils - Editor"""
 
-from typing import Tuple
-
-from rich.text import Text
-from rich.panel import Panel
 from rich.console import Group
+from rich.panel import Panel
+from rich.text import Text
 from textual import events
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Static
 from textual.reactive import reactive
+from textual.widgets import Footer, Header, Static
 
-from .glyphs import Glyph, SearchPattern, ReplacePattern
+from .glyphs import Glyph, ReplacePattern, SearchPattern
 
 
 class EditWidget(Static, can_focus=True):
@@ -33,6 +30,11 @@ class EditWidget(Static, can_focus=True):
     ]
 
     def __init__(self, glyph: Glyph) -> None:
+        """Create a new EditWidget.
+
+        Args:
+            glyph (Glyph): The glyph to edit.
+        """
         super().__init__()
         self.glyph = glyph
 
@@ -97,9 +99,7 @@ class EditWidget(Static, can_focus=True):
             subtitle=position,
         )
 
-        self.update(
-            Group(Text(self.glyph.unicode_name, justify="center", style="bold"), panel)
-        )
+        self.update(Group(Text(self.glyph.unicode_name, justify="center", style="bold"), panel))
 
     def _get_index(self) -> int:
         """Get the index of the current cursor position."""
@@ -138,7 +138,6 @@ class EditWidget(Static, can_focus=True):
 
     def _handle_mouse_event(self, event, update_data: bool = False) -> None:
         """Handle mouse events for click and movement."""
-
         grid_x = (event.x - 5) // 2
         grid_y = event.y - 4
 
@@ -184,6 +183,13 @@ class ReplaceWidget(Static, can_focus=True):
         search_pattern: SearchPattern,
         replace_pattern: ReplacePattern,
     ) -> None:
+        """Create a new ReplaceWidget.
+
+        Args:
+            glyph (Glyph): The glyph to edit.
+            search_pattern (SearchPattern): The search pattern to match.
+            replace_pattern (ReplacePattern): The replace pattern to apply.
+        """
         super().__init__()
         self.glyph = glyph
         self.search_pattern = search_pattern
@@ -211,8 +217,7 @@ class ReplaceWidget(Static, can_focus=True):
                 return "white" if self.app.dark else "black"
             return "black" if self.app.dark else "white"
 
-        def get_block_style(i: int, j: int, current_match: Tuple[int, int]) -> str:
-
+        def get_block_style(i: int, j: int, current_match: tuple[int, int]) -> str:
             width = self.glyph.width
             h = self.replace_pattern.height
             w = self.replace_pattern.width
@@ -259,9 +264,7 @@ class ReplaceWidget(Static, can_focus=True):
             subtitle=match_index_text,
         )
 
-        self.update(
-            Group(Text(self.glyph.unicode_name, justify="center", style="bold"), panel)
-        )
+        self.update(Group(Text(self.glyph.unicode_name, justify="center", style="bold"), panel))
 
     def action_prev(self) -> None:
         """Move the cursor to the previous match."""
@@ -295,6 +298,11 @@ class GlyphEditor(App):
     BINDINGS = [("ctrl+d", "toggle_dark", "Toggle Dark Mode")]
 
     def __init__(self, glyph: Glyph) -> None:
+        """Create a new GlyphEditor.
+
+        Args:
+            glyph (Glyph): The glyph to edit.
+        """
         super().__init__()
         self.glyph = glyph
         self.edit_widget = None
@@ -327,6 +335,13 @@ class GlyphReplacer(App):
         search_pattern: SearchPattern,
         replace_pattern: ReplacePattern,
     ) -> None:
+        """Create a new GlyphReplacer.
+
+        Args:
+            glyph (Glyph): The glyph to edit.
+            search_pattern (SearchPattern): The search pattern to match.
+            replace_pattern (ReplacePattern): The replace pattern to apply.
+        """
         super().__init__()
         self.glyph = glyph
         self.search_pattern = search_pattern
@@ -343,7 +358,5 @@ class GlyphReplacer(App):
         """Create child widgets for the app."""
         yield Header()
         yield Footer()
-        self.replace_widget = ReplaceWidget(
-            self.glyph, self.search_pattern, self.replace_pattern
-        )
+        self.replace_widget = ReplaceWidget(self.glyph, self.search_pattern, self.replace_pattern)
         yield self.replace_widget

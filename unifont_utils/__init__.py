@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 """Unifont Utils Package"""
 
 __author__ = "SkyEye_FAST"
@@ -9,6 +8,6 @@ __maintainer__ = "SkyEye_FAST"
 __email__ = "skyeyefast@foxmail.com"
 
 from .converter import Converter
-from .glyphs import Glyph, GlyphSet, SearchPattern, ReplacePattern
 from .diff import diff_glyphs, print_diff
 from .editor import GlyphEditor, GlyphReplacer
+from .glyphs import Glyph, GlyphSet, ReplacePattern, SearchPattern

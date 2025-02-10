@@ -1,42 +1,40 @@
-# -*- encoding: utf-8 -*-
 # @Author: SkyEye_FAST <skyeyefast@foxmail.com>
 # @Copyright: Copyright (C) 2024-2025 SkyEye_FAST
 """Unifont Utils - Diff"""
 
-from typing import List, Union
+from typing import Union
 
 from rich.console import Console
-from rich.text import Text
 from rich.table import Table
+from rich.text import Text
 
-from .base import Validator as V
-from .converter import Converter as C
+from .base import Validator as Validator
+from .converter import Converter
 from .glyphs import Glyph
 
 
-def get_img_data(glyph: Union[str, Glyph]) -> List[int]:
+def get_img_data(glyph: Union[str, Glyph]) -> list[int]:
     """Input a `.hex` string or a Glyph object and output its image data.
 
     Args:
         glyph (Union[str, Glyph]): The glyph to be converted.
 
     Returns:
-        List[int]: The converted image data.
+        list[int]: The converted image data.
 
     Raises:
         TypeError: If the glyph is not a valid type.
     """
-
     if isinstance(glyph, str):
-        glyph = V.hex_str(glyph)
+        glyph = Validator.hex_str(glyph)
         width = 16 if len(glyph) == 64 else 8
-        return C.to_img_data(glyph, width)
+        return Converter.to_img_data(glyph, width)
     if isinstance(glyph, Glyph):
         return glyph.data
     raise TypeError("The glyph must be either a .hex string or a Glyph object.")
 
 
-def diff_glyphs(glyph_a: Union[str, Glyph], glyph_b: Union[str, Glyph]) -> List[str]:
+def diff_glyphs(glyph_a: Union[str, Glyph], glyph_b: Union[str, Glyph]) -> list[str]:
     """Compares two glyphs and returns a list of differences.
 
     Args:
@@ -44,22 +42,20 @@ def diff_glyphs(glyph_a: Union[str, Glyph], glyph_b: Union[str, Glyph]) -> List[
         glyph_b (Union[str, Glyph]): The second glyph to compare.
 
     Returns:
-        List[str]: A list of differences between the two glyphs.
+        list[str]: A list of differences between the two glyphs.
 
     Raises:
         ValueError: If the two glyphs have different sizes.
     """
-
     a, b = map(get_img_data, (glyph_a, glyph_b))
     if len(a) != len(b):
         raise ValueError("The two glyphs must have the same size.")
 
     return [
-        "+" if not i and j else
-        "-" if i and not j else
-        "1" if i and j else "0"
+        "+" if not i and j else "-" if i and not j else "1" if i and j else "0"
         for i, j in zip(a, b)
     ]
+
 
 def print_diff(
     glyph_a: Union[str, Glyph],
@@ -80,7 +76,6 @@ def print_diff(
 
             If `False`, `0` is transparent and `1` is white.
     """
-
     diff_list = diff_glyphs(glyph_a, glyph_b)
     a, b = get_img_data(glyph_a), get_img_data(glyph_b)
     console = Console()
@@ -93,7 +88,7 @@ def print_diff(
 
     width = len(a) // 16
 
-    def get_row(i: int, data: List[int]) -> Text:
+    def get_row(i: int, data: list[int]) -> Text:
         row_text = Text()
         row_data = data[i * width : (i + 1) * width]
         for pixel in row_data:

@@ -1,24 +1,26 @@
-# -*- encoding: utf-8 -*-
 # @Author: SkyEye_FAST <skyeyefast@foxmail.com>
 # @Copyright: Copyright (C) 2024-2025 SkyEye_FAST
 """Unifont Utils - Glyphs"""
 
-from dataclasses import dataclass, field
 import time
+from collections.abc import Iterator
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple, Union
 from unicodedata import name
-from typing import Dict, List, Tuple, Iterator, Optional, Union
 
 from PIL import Image as Img
 from rich.console import Console
 from rich.text import Text
 
 from .base import (
-    Validator as V,
     CodePoint,
     CodePoints,
     FilePath,
 )
-from .converter import Converter as C
+from .base import (
+    Validator as Validator,
+)
+from .converter import Converter as Converter
 
 COLOR_MAP = {
     "white": (255, 255, 255, 255),
@@ -30,6 +32,7 @@ COLOR_VALUE_MAP = {
     (0, 0, 0, 255): "black",
     (0, 0, 0, 0): "transparent",
 }
+
 
 @dataclass
 class Pattern:
@@ -94,8 +97,7 @@ class Pattern:
         Returns:
             Pattern: The created Pattern object.
         """
-
-        img_path = V.file_path(img_path)
+        img_path = Validator.file_path(img_path)
         if not img_path.is_file():
             raise FileNotFoundError(f"File not found: {img_path}")
 
@@ -134,9 +136,7 @@ class ReplacePattern(Pattern):
 
     def __post_init__(self) -> None:
         if not all(i in {0, 1, -1} for i in self.data):
-            raise ValueError(
-                "The pattern data must be a list of integers 0, 1, and -1."
-            )
+            raise ValueError("The pattern data must be a list of integers 0, 1, and -1.")
 
     @classmethod
     def init_from_img(cls, img_path: FilePath) -> "ReplacePattern":
@@ -194,7 +194,7 @@ class Glyph:
     """The color scheme of the glyph."""
 
     def __post_init__(self) -> None:
-        self._code_point = V.code_point(self._code_point)
+        self._code_point = Validator.code_point(self._code_point)
 
     def __str__(self) -> str:
         code_point = self._code_point
@@ -224,7 +224,7 @@ class Glyph:
     def hex_str(self) -> str:
         """The `.hex` format string of the glyph."""
         if not self._hex_str and self.data:
-            self._hex_str = C.to_hex(self.data)
+            self._hex_str = Converter.to_hex(self.data)
         return self._hex_str
 
     @hex_str.setter
@@ -236,20 +236,20 @@ class Glyph:
     def data(self) -> List[int]:
         """The pixel data of the glyph."""
         if not self._data and self.hex_str:
-            self._data = C.to_img_data(self.hex_str, self.width)
+            self._data = Converter.to_img_data(self.hex_str, self.width)
         return self._data[:]
 
     @data.setter
     def data(self, data: List[int]) -> None:
         """Set the pixel data of the glyph."""
         self._data = data
-        self._hex_str = C.to_hex(data)
+        self._hex_str = Converter.to_hex(data)
         self._width = 16 if len(self._hex_str) == 64 else 8
 
     def update_data_at_index(self, index: int, value: int) -> None:
         """Update the pixel data at a specific index."""
         self._data[index] = value
-        self._hex_str = C.to_hex(self._data)
+        self._hex_str = Converter.to_hex(self._data)
 
     @property
     def color_scheme(self) -> ColorScheme:
@@ -272,11 +272,8 @@ class Glyph:
         raise TypeError("Invalid color scheme type. Must be a string or a ColorScheme.")
 
     @staticmethod
-    def _auto_detect_color_scheme(
-        width: int, rgba_values: List[Tuple[int, int, int, int]]
-    ) -> str:
+    def _auto_detect_color_scheme(width: int, rgba_values: List[Tuple[int, int, int, int]]) -> str:
         """Helper function to automatically detect the color scheme of the glyph."""
-
         valid_rgba_values = {(0, 0, 0, 255), (255, 255, 255, 255), (0, 0, 0, 0)}
 
         if not all(pixel in valid_rgba_values for pixel in rgba_values):
@@ -287,7 +284,7 @@ class Glyph:
             raise ValueError("Invalid pixel RGBA values.")
 
         background_color_value = rgba_values[width - 1]
-        background_color =COLOR_VALUE_MAP[background_color_value]
+        background_color = COLOR_VALUE_MAP[background_color_value]
         existed_colors.remove(background_color_value)
         foreground_color = COLOR_VALUE_MAP[existed_colors.pop()]
 
@@ -320,12 +317,11 @@ class Glyph:
         Args:
             hex_str (str): The `.hex` format string of the glyph.
         """
-
-        hex_str = V.hex_str(hex_str)
+        hex_str = Validator.hex_str(hex_str)
         width = 16 if len(hex_str) == 64 else 8
         self._hex_str = hex_str
         self._width = width
-        self._data = C.to_img_data(hex_str, width)
+        self._data = Converter.to_img_data(hex_str, width)
 
     def load_img(
         self,
@@ -335,6 +331,7 @@ class Glyph:
         color_scheme: Optional[Union[str, ColorScheme]] = None,
     ) -> None:
         """Load an image file.
+
         Args:
             img_path (FilePath): The path to the image file.
             color_auto_detect (bool, optional): Whether to automatically detect the color scheme.
@@ -346,15 +343,12 @@ class Glyph:
             ValueError: If the color scheme is invalid.
             FileNotFoundError: If the image file is not found.
         """
-
         if color_scheme is None and not color_auto_detect:
-            raise ValueError(
-                "You must specify a color scheme if automatic detection is disabled."
-            )
+            raise ValueError("You must specify a color scheme if automatic detection is disabled.")
         if color_scheme is not None:
             color_auto_detect = False
             color_scheme = self._validate_and_create_color_scheme(color_scheme)
-        img_path = V.file_path(img_path)
+        img_path = Validator.file_path(img_path)
         if not img_path.is_file():
             raise FileNotFoundError(f"File not found: {img_path}")
 
@@ -370,7 +364,7 @@ class Glyph:
         self.color_scheme = color_scheme
         self._width = img.size[0]
         data = [color_scheme.color_map[COLOR_VALUE_MAP[pixel]] for pixel in rgba_values]
-        self._hex_str = C.to_hex(data)
+        self._hex_str = Converter.to_hex(data)
 
     @classmethod
     def init_from_hex(cls, code_point: CodePoint, hex_str: str) -> "Glyph":
@@ -383,9 +377,8 @@ class Glyph:
         Returns:
             Glyph: The created glyph object.
         """
-
-        code_point = V.code_point(code_point)
-        hex_str = V.hex_str(hex_str)
+        code_point = Validator.code_point(code_point)
+        hex_str = Validator.hex_str(hex_str)
 
         return cls(code_point, _hex_str=hex_str)
 
@@ -411,11 +404,8 @@ class Glyph:
         Returns:
             Glyph: The created glyph object.
         """
-
         g = cls(code_point)
-        g.load_img(
-            img_path, color_auto_detect=color_auto_detect, color_scheme=color_scheme
-        )
+        g.load_img(img_path, color_auto_detect=color_auto_detect, color_scheme=color_scheme)
         return g
 
     def save_img(
@@ -441,13 +431,10 @@ class Glyph:
             ValueError: If the image format is not supported.
             ValueError: If the glyph data or size is invalid.
         """
-
-        save_path = V.file_path(save_path)
+        save_path = Validator.file_path(save_path)
         img_format = img_format.upper()
         if img_format not in {"PNG", "BMP"}:
-            raise ValueError(
-                "Invalid image format. The image format must be PNG or BMP."
-            )
+            raise ValueError("Invalid image format. The image format must be PNG or BMP.")
         if len(self.data) != self.width * 16:
             raise ValueError("Invalid glyph data or size.")
 
@@ -466,7 +453,7 @@ class Glyph:
                 "Warning: BMP format does not support transparency. "
                 "The image will be saved as a black and white image."
             )
-        color_dict =  {v: k for k, v in color_scheme.color_map.items()}
+        color_dict = {v: k for k, v in color_scheme.color_map.items()}
         data = [COLOR_MAP[color_dict[pixel]] for pixel in self.data]
         img.putdata(data)
         img.save(save_path, img_format)
@@ -493,7 +480,6 @@ class Glyph:
 
                 If `True`, the binary string of each line will be displayed on the left.
         """
-
         console = Console()
 
         white_block = "white on white"
@@ -515,9 +501,7 @@ class Glyph:
             for j in range(self.width):
                 row_text.append(
                     "  ",
-                    style=(
-                        white_block if self.data[i * self.width + j] else black_block
-                    ),
+                    style=(white_block if self.data[i * self.width + j] else black_block),
                 )
 
             if display_hex or display_bin:
@@ -536,9 +520,7 @@ class Glyph:
 
             console.print(row_text)
 
-    def replace(
-        self, search_pattern: SearchPattern, replace_pattern: ReplacePattern
-    ) -> None:
+    def replace(self, search_pattern: SearchPattern, replace_pattern: ReplacePattern) -> None:
         """Replaces a pattern in an image with another pattern.
 
         Args:
@@ -548,7 +530,6 @@ class Glyph:
         Raises:
             ValueError: If the two patterns have different size.
         """
-
         img_data = self.data
         pattern_a, pattern_b = search_pattern.data, replace_pattern.data
         if search_pattern.width > self.width:
@@ -599,7 +580,6 @@ class Glyph:
         Returns:
             List[Tuple[int, int]]: List of coordinates where the pattern is found.
         """
-
         if search_pattern.width > self.width:
             raise ValueError("The pattern to be searched is larger than the glyph.")
         pattern_a = search_pattern.data
@@ -634,7 +614,6 @@ class Glyph:
             j (int): The column coordinate where the pattern starts.
             replace_pattern (ReplacePattern): The pattern to replace with.
         """
-
         if replace_pattern.width > self.width:
             raise ValueError("The pattern to be replaced is larger than the glyph.")
         if i < 0 or i + replace_pattern.height > 16:
@@ -721,7 +700,7 @@ class GlyphSet:
         return iter(self._glyphs.values())
 
     def __contains__(self, glyph: Union[Glyph, str]) -> bool:
-        code_point = V.code_point(glyph if isinstance(glyph, str) else glyph.code_point)
+        code_point = Validator.code_point(glyph if isinstance(glyph, str) else glyph.code_point)
         return code_point in self._glyphs
 
     @classmethod
@@ -734,8 +713,7 @@ class GlyphSet:
 
                 The code points specified should be hexadecimal number strings or integers.
         """
-
-        code_points_list = V.code_points(code_points)
+        code_points_list = Validator.code_points(code_points)
         glyphs = {cp: Glyph.init_from_hex(cp, "") for cp in code_points_list}
         return cls(_glyphs=glyphs)
 
@@ -748,16 +726,13 @@ class GlyphSet:
         Returns:
             Glyph: The obtained glyph.
         """
-
-        code_point = V.code_point(code_point)
+        code_point = Validator.code_point(code_point)
         try:
             return self._glyphs[code_point]
         except KeyError as exc:
             raise KeyError(f"Glyph with code point U+{code_point} not found.") from exc
 
-    def get_glyphs(
-        self, code_points: CodePoints, *, skip_empty: bool = True
-    ) -> "GlyphSet":
+    def get_glyphs(self, code_points: CodePoints, *, skip_empty: bool = True) -> "GlyphSet":
         """Get a set of glyphs by their code points.
 
         Args:
@@ -773,9 +748,8 @@ class GlyphSet:
         Returns:
             GlyphSet: The obtained set of glyphs.
         """
-
         result = GlyphSet()
-        code_points_list = V.code_points(code_points)
+        code_points_list = Validator.code_points(code_points)
         for code_point in code_points_list:
             if code_point in self._glyphs:
                 result.add_glyph(self._glyphs[code_point])
@@ -791,12 +765,9 @@ class GlyphSet:
 
                 If a tuple is provided, it should be in the format of `(code_point, hex_str)`.
         """
-
         glyph_obj = self._validate_and_create_glyph(glyph)
         if glyph_obj.code_point in self._glyphs:
-            raise ValueError(
-                f"Glyph with code point U+{glyph_obj.code_point} already exists."
-            )
+            raise ValueError(f"Glyph with code point U+{glyph_obj.code_point} already exists.")
         self._glyphs[glyph_obj.code_point] = glyph_obj
 
     def remove_glyph(self, code_point: CodePoint) -> None:
@@ -805,8 +776,7 @@ class GlyphSet:
         Args:
             code_point (CodePoint): The code point of the glyph to remove.
         """
-
-        code_point = V.code_point(code_point)
+        code_point = Validator.code_point(code_point)
         if code_point not in self._glyphs:
             raise KeyError(f"Glyph with code point U+{code_point} not found.")
         del self._glyphs[code_point]
@@ -819,7 +789,6 @@ class GlyphSet:
 
                 If a tuple is provided, it should be in the format of `(code_point, hex_str)`.
         """
-
         glyph_obj = self._validate_and_create_glyph(glyph)
         if glyph_obj.code_point not in self._glyphs:
             raise KeyError(f"Glyph with code point U+{glyph_obj.code_point} not found.")
@@ -827,25 +796,20 @@ class GlyphSet:
 
     def sort_glyphs(self) -> None:
         """Sort the glyphs in the set by their code points."""
-
         if not self._glyphs:
             raise ValueError("Cannot sort an empty glyph set.")
         self._glyphs = dict(sorted(self._glyphs.items(), key=lambda x: int(x[0], 16)))
 
-    def _validate_and_create_glyph(
-        self, glyph: Union[Glyph, Tuple[CodePoint, str]]
-    ) -> Glyph:
+    def _validate_and_create_glyph(self, glyph: Union[Glyph, Tuple[CodePoint, str]]) -> Glyph:
         """Helper function to validate and create a Glyph object."""
         if isinstance(glyph, Glyph):
             return glyph
         if isinstance(glyph, tuple):
             code_point, hex_str = glyph
-            code_point = V.code_point(code_point)
-            hex_str = V.hex_str(hex_str)
+            code_point = Validator.code_point(code_point)
+            hex_str = Validator.hex_str(hex_str)
             return Glyph.init_from_hex(code_point, hex_str)
-        raise TypeError(
-            "Invalid glyph type. Must be a Glyph or a tuple (code_point, hex_str)."
-        )
+        raise TypeError("Invalid glyph type. Must be a Glyph or a tuple (code_point, hex_str).")
 
     @classmethod
     def load_hex_file(cls, file_path: FilePath) -> "GlyphSet":
@@ -854,11 +818,10 @@ class GlyphSet:
         Args:
             file_path (FilePath): The path to the `.hex` file.
         """
-
         print(f"Start loading glyphs from {file_path}...")
         start_time = time.time()
 
-        file_path = V.file_path(file_path)
+        file_path = Validator.file_path(file_path)
         if not file_path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -885,10 +848,9 @@ class GlyphSet:
         Args:
             file_path (FilePath): The path to the `.hex` file.
         """
-
         start_time = time.time()
 
-        file_path = V.file_path(file_path)
+        file_path = Validator.file_path(file_path)
         with file_path.open("w", encoding="utf-8") as f:
             for code_point, glyph in sorted(self._glyphs.items()):
                 f.write(f"{code_point}:{glyph.hex_str}\n")
@@ -910,11 +872,10 @@ class GlyphSet:
             file_path (FilePath): The path to the Unicode page file.
             start (CodePoint, optional): The starting Unicode code point. Defaults to "4E00".
         """
-
         start_time = time.time()
 
         self.sort_glyphs()
-        file_path = V.file_path(file_path)
+        file_path = Validator.file_path(file_path)
         start = int(start, 16) if isinstance(start, str) else start
 
         img = Img.new("RGBA", (256, 256))
@@ -927,7 +888,7 @@ class GlyphSet:
                 glyph_img = Img.new("RGBA", (16, 16))
                 rgba_data = [
                     (255, 255, 255, 255) if pixel else (0, 0, 0, 0)
-                    for pixel in C.to_img_data(glyph.hex_str)
+                    for pixel in Converter.to_img_data(glyph.hex_str)
                 ]
                 glyph_img.putdata(rgba_data)
 
@@ -942,7 +903,4 @@ class GlyphSet:
         img.save(file_path)
 
         elapsed_time = time.time() - start_time
-        print(
-            f'Saved {position} glyphs to "{file_path.name}". '
-            f"Time elapsed: {elapsed_time:.2f} s."
-        )
+        print(f'Saved {position} glyphs to "{file_path.name}". Time elapsed: {elapsed_time:.2f} s.')

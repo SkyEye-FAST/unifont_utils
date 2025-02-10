@@ -1,15 +1,15 @@
-# -*- encoding: utf-8 -*-
 # @Author: SkyEye_FAST <skyeyefast@foxmail.com>
 # @Copyright: Copyright (C) 2024-2025 SkyEye_FAST
 """Unifont Utils - Base Module"""
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import List, Set, Optional, Union, TypeAlias, Sequence
+from typing import Optional, TypeAlias, Union
 
 # Type aliases
 FilePath: TypeAlias = Union[str, Path]
 CodePoint: TypeAlias = Union[str, int]
-CodePoints: TypeAlias = Union[Sequence[CodePoint], Set[CodePoint]]
+CodePoints: TypeAlias = Union[Sequence[CodePoint], set[CodePoint]]
 
 
 class Validator:
@@ -31,7 +31,6 @@ class Validator:
             TypeError: If the code point is not a string or an integer.
             ValueError: If the code point is invalid.
         """
-
         if isinstance(code_point, int):
             code_point = hex(code_point)[2:]
         elif not isinstance(code_point, str):
@@ -48,20 +47,19 @@ class Validator:
         return code_point.zfill(6 if len(code_point) > 4 else 4)
 
     @staticmethod
-    def code_points(code_points: CodePoints) -> List[str]:
+    def code_points(code_points: CodePoints) -> list[str]:
         """Validate acode point list and return its normalized form.
 
         Args:
             code_points (CodePoints): The code point string or tuple to validate.
 
         Returns:
-            List[int]: The normalized code point list if valid.
+            list[int]: The normalized code point list if valid.
 
         Raises:
             TypeError: If the code points are not a list, a set, or a `range` object.
             ValueError: If the code points are invalid.
         """
-
         if not isinstance(code_points, (Sequence, set)):
             raise TypeError(
                 "Invalid type for the specified code points. "
@@ -87,14 +85,11 @@ class Validator:
         Raises:
             ValueError: If the hexadecimal string is invalid.
         """
-
         if not hex_str:
             return ""
 
         if len(hex_str) not in {32, 64}:
-            raise ValueError(
-                f"Invalid .hex string length: {hex_str} (length: {len(hex_str)})."
-            )
+            raise ValueError(f"Invalid .hex string length: {hex_str} (length: {len(hex_str)}).")
 
         for c in hex_str:
             if c not in Validator.HEX_CHARS:
@@ -115,7 +110,6 @@ class Validator:
         Raises:
             TypeError: If the file path is not a string or a Path object.
         """
-
         if isinstance(file_path, str):
             return Path(file_path)
         if isinstance(file_path, Path):
