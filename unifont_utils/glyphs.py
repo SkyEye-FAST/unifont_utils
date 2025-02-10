@@ -5,7 +5,7 @@
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 from unicodedata import name
 
 from PIL import Image as Img
@@ -39,7 +39,7 @@ class Pattern:
     """A class to represent a pattern.
 
     Attributes:
-        data (List[int]): The pattern data.
+        data (list[int]): The pattern data.
         width (int): The width of the pattern.
         height (Optional[int]): The height of the pattern.
 
@@ -47,7 +47,7 @@ class Pattern:
         ValueError: If the size of the pattern is invalid.
     """
 
-    data: List[int]
+    data: list[int]
     """The pattern data."""
     _width: int
     """The width of the pattern."""
@@ -57,6 +57,7 @@ class Pattern:
     """
 
     def __post_init__(self) -> None:
+        """Post-initialization method to validate the pattern."""
         if self._width <= 2:
             raise ValueError("The width must be greater than 2 pixels.")
         if self._width > 16:
@@ -73,6 +74,11 @@ class Pattern:
             raise ValueError("The height must be less than 16 pixels.")
 
     def __str__(self) -> str:
+        """Return the string representation of the pattern.
+
+        Returns:
+            str: The string representation of the pattern.
+        """
         return f"Unifont Pattern ({self._width}x{self._height})"
 
     @property
@@ -121,11 +127,24 @@ class SearchPattern(Pattern):
     """A class to represent a pattern for searching."""
 
     def __post_init__(self) -> None:
+        """Post-initialization method to validate the pattern.
+
+        Raises:
+            ValueError: If the pattern data is invalid.
+        """
         if not all(i in {0, 1} for i in self.data):
             raise ValueError("The pattern data must be a list of integers 0 and 1.")
 
     @classmethod
     def init_from_img(cls, img_path: FilePath) -> "SearchPattern":
+        """Create a new SearchPattern object from an image file.
+
+        Args:
+            img_path (FilePath): The path to the image file.
+
+        Returns:
+            SearchPattern: The created SearchPattern object.
+        """
         p = super().init_from_img(img_path)
         return cls(p.data, p.width, p.height)
 
@@ -135,11 +154,24 @@ class ReplacePattern(Pattern):
     """A class to represent a pattern for replacing."""
 
     def __post_init__(self) -> None:
+        """Post-initialization method to validate the pattern.
+
+        Raises:
+            ValueError: If the pattern data is invalid.
+        """
         if not all(i in {0, 1, -1} for i in self.data):
             raise ValueError("The pattern data must be a list of integers 0, 1, and -1.")
 
     @classmethod
     def init_from_img(cls, img_path: FilePath) -> "ReplacePattern":
+        """Create a new ReplacePattern object from an image file.
+
+        Args:
+            img_path (FilePath): The path to the image file.
+
+        Returns:
+            ReplacePattern: The created ReplacePattern object.
+        """
         p = super().init_from_img(img_path)
         return cls(p.data, p.width, p.height)
 
@@ -149,7 +181,7 @@ class ColorScheme:
 
     _scheme_name: str
     """The name of the color scheme."""
-    _color_map: Dict[int, str]
+    _color_map: dict[int, str]
     """The color map of the color scheme."""
     _available_schemes = {
         "black_and_white": {"white": 0, "black": 1},
@@ -159,12 +191,26 @@ class ColorScheme:
     }
 
     def __init__(self, scheme_name: str = "black_and_white") -> None:
+        """Initialize a new ColorScheme object.
+
+        Args:
+            scheme_name (str, optional): The name of the color scheme.
+                Defaults to "black_and_white".
+
+        Raises:
+            ValueError: If the color scheme is invalid.
+        """
         if scheme_name not in self._available_schemes:
             raise ValueError(f"Invalid color scheme: {scheme_name}")
         self._scheme_name = scheme_name
         self._color_map = self._available_schemes[scheme_name]
 
     def __str__(self) -> str:
+        """Return the string representation of the color scheme.
+
+        Returns:
+            str: The string representation of the color scheme.
+        """
         return f"Unifont Color Scheme ({self._color_map})"
 
     @property
@@ -173,7 +219,7 @@ class ColorScheme:
         return self._scheme_name
 
     @property
-    def color_map(self) -> Dict[int, str]:
+    def color_map(self) -> dict[int, str]:
         """The color map of the color scheme."""
         return self._color_map
 
@@ -188,21 +234,35 @@ class Glyph:
     """The width of the glyph."""
     _hex_str: str = field(default_factory=str)
     """The `.hex` format string of the glyph."""
-    _data: List[int] = field(default_factory=list)
+    _data: list[int] = field(default_factory=list)
     """The pixel data of the glyph."""
     _color_scheme: ColorScheme = ColorScheme()
     """The color scheme of the glyph."""
 
     def __post_init__(self) -> None:
+        """Post-initialization method to validate the glyph."""
         self._code_point = Validator.code_point(self._code_point)
 
     def __str__(self) -> str:
+        """Return the string representation of the glyph.
+
+        Returns:
+            str: The string representation of the glyph.
+        """
         code_point = self._code_point
         if len(self._code_point) == 6 and self._code_point.startswith("0"):
             code_point = code_point[1:]
         return f"Unifont Glyph (U+{code_point})"
 
     def __add__(self, other: "Glyph") -> "GlyphSet":
+        """Add two glyphs together.
+
+        Args:
+            other (Glyph): The other glyph to add.
+
+        Returns:
+            GlyphSet: The combined glyph set.
+        """
         glyphs = GlyphSet()
         glyphs += self
         glyphs += other
@@ -233,14 +293,14 @@ class Glyph:
         self.load_hex(hex_str)
 
     @property
-    def data(self) -> List[int]:
+    def data(self) -> list[int]:
         """The pixel data of the glyph."""
         if not self._data and self.hex_str:
             self._data = Converter.to_img_data(self.hex_str, self.width)
         return self._data[:]
 
     @data.setter
-    def data(self, data: List[int]) -> None:
+    def data(self, data: list[int]) -> None:
         """Set the pixel data of the glyph."""
         self._data = data
         self._hex_str = Converter.to_hex(data)
@@ -272,7 +332,7 @@ class Glyph:
         raise TypeError("Invalid color scheme type. Must be a string or a ColorScheme.")
 
     @staticmethod
-    def _auto_detect_color_scheme(width: int, rgba_values: List[Tuple[int, int, int, int]]) -> str:
+    def _auto_detect_color_scheme(width: int, rgba_values: list[tuple[int, int, int, int]]) -> str:
         """Helper function to automatically detect the color scheme of the glyph."""
         valid_rgba_values = {(0, 0, 0, 255), (255, 255, 255, 255), (0, 0, 0, 0)}
 
@@ -418,14 +478,8 @@ class Glyph:
 
         Args:
             save_path (FilePath): The path to save the image.
-            format (str, optional): The format of the image. Defaults to `PNG`.
-            black_and_white (bool, optional): Whether it is a black and white image.
-
-                Defaults to the one specified during class initialization.
-
-                If `True`, `0` is white and `1` is black.
-
-                If `False`, `0` is transparent and `1` is white.
+            img_format (str, optional): The format of the image. Defaults to `PNG`.
+            color_scheme (Union[str, ColorScheme], optional): The color scheme of the   glyph.
 
         Raises:
             ValueError: If the image format is not supported.
@@ -571,14 +625,14 @@ class Glyph:
 
         self.data = img_data
 
-    def find_matches(self, search_pattern: SearchPattern) -> List[Tuple[int, int]]:
+    def find_matches(self, search_pattern: SearchPattern) -> list[tuple[int, int]]:
         """Finds all matches of a pattern in the image.
 
         Args:
             search_pattern (SearchPattern): The pattern to be searched.
 
         Returns:
-            List[Tuple[int, int]]: List of coordinates where the pattern is found.
+            list[tuple[int, int]]: list of coordinates where the pattern is found.
         """
         if search_pattern.width > self.width:
             raise ValueError("The pattern to be searched is larger than the glyph.")
@@ -602,7 +656,7 @@ class Glyph:
         for i in range(16 - height + 1):
             for j in range(image_width - width + 1):
                 if match_pattern(i, j):
-                    matches.append((i, j))
+                    matches.extend([(i, j)])
 
         return matches
 
@@ -643,37 +697,72 @@ class Glyph:
 class GlyphSet:
     """A class representing a set of glyphs in Unifont."""
 
-    _glyphs: Dict[str, Glyph] = field(default_factory=dict)
+    _glyphs: dict[str, Glyph] = field(default_factory=dict)
     """A dictionary of glyphs in the set."""
 
     @property
-    def glyphs(self) -> Dict[str, Glyph]:
+    def glyphs(self) -> dict[str, Glyph]:
         """A dictionary of glyphs in the set."""
         self.sort_glyphs()
         return self._glyphs
 
     @property
-    def code_points(self) -> List[CodePoint]:
+    def code_points(self) -> list[CodePoint]:
         """A list of code points of the glyphs in the set."""
         self.sort_glyphs()
         return list(self._glyphs.keys())
 
     def __str__(self) -> str:
+        """Return the string representation of the glyph set.
+
+        Returns:
+            str: The string representation of the glyph set.
+        """
         if not self._glyphs:
             return "Unifont Glyph Set (0 glyphs)"
 
         return f"Unifont Glyph Set ({len(self._glyphs)} glyphs)"
 
     def __getitem__(self, code_point: CodePoint) -> Glyph:
+        """Get a glyph by its code point.
+
+        Args:
+            code_point (CodePoint): The code point of the glyph to get.
+
+        Returns:
+            Glyph: The obtained glyph.
+        """
         return self.get_glyph(code_point)
 
     def __setitem__(self, code_point: CodePoint, hex_str: str) -> None:
+        """Set the hexadecimal string of a glyph.
+
+        Args:
+            code_point (CodePoint): The code point of the glyph to set.
+            hex_str (str): The hexadecimal string to set.
+        """
         self.add_glyph((code_point, hex_str))
 
     def __delitem__(self, code_point: CodePoint) -> None:
+        """Remove a glyph from the set.
+
+        Args:
+            code_point (CodePoint): The code point of the glyph to remove.
+        """
         self.remove_glyph(code_point)
 
     def __add__(self, other: Union["GlyphSet", Glyph]) -> "GlyphSet":
+        """Add two glyph sets together.
+
+        Args:
+            other (Union["GlyphSet", Glyph]): The other glyph set to add.
+
+        Raises:
+            TypeError: If the type of the other object is invalid.
+
+        Returns:
+            GlyphSet: The combined glyph set.
+        """
         result = GlyphSet()
         result._glyphs = self._glyphs.copy()
         if isinstance(other, Glyph):
@@ -685,6 +774,17 @@ class GlyphSet:
         return result
 
     def __iadd__(self, other: Union["GlyphSet", Glyph]) -> "GlyphSet":
+        """Add another glyph set or glyph to the set in-place.
+
+        Args:
+            other (Union["GlyphSet", Glyph]): The other glyph set or glyph to add.
+
+        Raises:
+            TypeError: If the type of the other object is invalid.
+
+        Returns:
+            GlyphSet: The updated glyph set.
+        """
         if isinstance(other, Glyph):
             self.add_glyph(other)
         elif isinstance(other, GlyphSet):
@@ -694,19 +794,32 @@ class GlyphSet:
         return self
 
     def __len__(self) -> int:
+        """Return the number of glyphs in the set.
+
+        Returns:
+            int: The number of glyphs in the set.
+        """
         return len(self._glyphs)
 
     def __iter__(self) -> Iterator[Glyph]:
+        """Iterate through the glyphs in the set."""
         return iter(self._glyphs.values())
 
     def __contains__(self, glyph: Union[Glyph, str]) -> bool:
+        """Check if a glyph is in the set.
+
+        Args:
+            glyph (Union[Glyph, str]): The glyph to check.
+
+        Returns:
+            bool: Whether the glyph is in the set.
+        """
         code_point = Validator.code_point(glyph if isinstance(glyph, str) else glyph.code_point)
         return code_point in self._glyphs
 
     @classmethod
     def init_glyphs(cls, code_points: CodePoints) -> "GlyphSet":
-        """Initialize a set of glyphs.
-        All the code points will be initialized with empty data.
+        """Initialize a set of glyphs. All the code points will be initialized with empty data.
 
         Args:
             code_points (CodePoints): The code points to initialize.
@@ -757,11 +870,11 @@ class GlyphSet:
                 result.add_glyph((code_point, ""))
         return result
 
-    def add_glyph(self, glyph: Union[Glyph, Tuple[CodePoint, str]]) -> None:
+    def add_glyph(self, glyph: Union[Glyph, tuple[CodePoint, str]]) -> None:
         """Add a glyph to the set.
 
         Args:
-            glyph (Union[Glyph, Tuple[CodePoint, str]]): The glyph to add.
+            glyph (Union[Glyph, tuple[CodePoint, str]]): The glyph to add.
 
                 If a tuple is provided, it should be in the format of `(code_point, hex_str)`.
         """
@@ -781,11 +894,11 @@ class GlyphSet:
             raise KeyError(f"Glyph with code point U+{code_point} not found.")
         del self._glyphs[code_point]
 
-    def update_glyph(self, glyph: Union[Glyph, Tuple[CodePoint, str]]) -> None:
+    def update_glyph(self, glyph: Union[Glyph, tuple[CodePoint, str]]) -> None:
         """Update a glyph in the set.
 
         Args:
-            glyph (Union[Glyph, Tuple[CodePoint, str]]): The new glyph to update.
+            glyph (Union[Glyph, tuple[CodePoint, str]]): The new glyph to update.
 
                 If a tuple is provided, it should be in the format of `(code_point, hex_str)`.
         """
@@ -800,7 +913,7 @@ class GlyphSet:
             raise ValueError("Cannot sort an empty glyph set.")
         self._glyphs = dict(sorted(self._glyphs.items(), key=lambda x: int(x[0], 16)))
 
-    def _validate_and_create_glyph(self, glyph: Union[Glyph, Tuple[CodePoint, str]]) -> Glyph:
+    def _validate_and_create_glyph(self, glyph: Union[Glyph, tuple[CodePoint, str]]) -> Glyph:
         """Helper function to validate and create a Glyph object."""
         if isinstance(glyph, Glyph):
             return glyph
@@ -828,10 +941,10 @@ class GlyphSet:
         glyphs = GlyphSet()
         with file_path.open("r", encoding="utf-8") as f:
             for line in f:
-                if l := line.strip():
+                if current_line := line.strip():
                     if ":" not in line:
-                        raise ValueError(f"Invalid line in file: {l}")
-                    code_point, hex_str = l.split(":", 1)
+                        raise ValueError(f"Invalid line in file: {current_line}")
+                    code_point, hex_str = current_line.split(":", 1)
                     glyphs.add_glyph((code_point, hex_str))
 
         elapsed_time = time.time() - start_time
