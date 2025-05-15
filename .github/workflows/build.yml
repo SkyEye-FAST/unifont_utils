@@ -12,19 +12,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Poetry
-        uses: abatilo/actions-poetry@v2
-
-      - name: Install dependencies
-        run: poetry install
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
 
       - name: Build the packages
-        run: poetry build
+        run: uv build
 
       - name: Get version from pyproject.toml
         id: get_version

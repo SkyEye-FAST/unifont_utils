@@ -1,11 +1,11 @@
-[tool.poetry]
+[project]
 name = "unifont_utils"
-version = "0.5.3"
+version = "0.5.4"
 description = "Unifont Utilities, but rewritten in Python."
-authors = ["SkyEye_FAST <skyeyefast@foxmail.com>"]
-license = "GPL-3.0-or-later"
+authors = [{ name = "SkyEye_FAST", email = "skyeyefast@foxmail.com" }]
+requires-python = ">=3.9,<4.0"
 readme = "README.rst"
-repository = "https://github.com/SkyEye-FAST/unifont_utils"
+license = "GPL-3.0-or-later"
 keywords = ["unifont"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -16,16 +16,18 @@ classifiers = [
     "Topic :: Text Processing :: Fonts",
     "Topic :: Utilities",
 ]
+dependencies = [
+    "pillow>=10.0",
+    "textual>=0.80.0",
+    "click>=8.1.0",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.9,<4.0"
-pillow = ">=10.0"
-textual = ">=0.80.0"
-click = ">=8.1.0"
+[project.urls]
+Repository = "https://github.com/SkyEye-FAST/unifont_utils"
 
-[tool.poetry.scripts]
-unipie = 'unifont_utils.console:cli'
+[project.scripts]
+unipie = "unifont_utils.console:cli"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
