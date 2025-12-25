@@ -1,7 +1,5 @@
 """Tests for core validation helpers in base module."""
 
-from __future__ import annotations
-
 import pytest
 
 from unifont_utils.base import Validator

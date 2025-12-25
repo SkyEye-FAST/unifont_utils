@@ -2,8 +2,6 @@
 # @Copyright: Copyright (C) 2024-2025 SkyEye_FAST
 """Unifont Utils - Downloader"""
 
-from __future__ import annotations
-
 import gzip
 import os
 import re

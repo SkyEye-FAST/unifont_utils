@@ -1,7 +1,5 @@
 """Tests for diff helpers operating on glyphs and hex strings."""
 
-from __future__ import annotations
-
 import pytest
 
 from unifont_utils.converter import Converter

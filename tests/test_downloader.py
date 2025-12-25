@@ -1,7 +1,5 @@
 """Tests for UnifontDownloader helpers."""
 
-from __future__ import annotations
-
 import gzip
 from pathlib import Path
 

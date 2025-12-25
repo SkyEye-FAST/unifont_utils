@@ -1,7 +1,5 @@
 """Tests for glyph data structures and I/O helpers."""
 
-from pathlib import Path
-
 import pytest
 from PIL import Image
 

@@ -1,7 +1,5 @@
 """Tests for glyph data conversions in converter module."""
 
-from __future__ import annotations
-
 import pytest
 
 from unifont_utils.converter import Converter
