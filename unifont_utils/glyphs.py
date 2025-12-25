@@ -5,7 +5,6 @@
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Optional, Union
 from unicodedata import name
 
 from PIL import Image as Img
@@ -51,7 +50,7 @@ class Pattern:
     """The pattern data."""
     _width: int
     """The width of the pattern."""
-    _height: Optional[int] = None
+    _height: int | None = None
     """The height of the pattern.
     If it is `None`, the height is set to the length of `data` divided by `width`.
     """
@@ -317,13 +316,11 @@ class Glyph:
         return self._color_scheme
 
     @color_scheme.setter
-    def color_scheme(self, scheme: Union[str, ColorScheme]) -> None:
+    def color_scheme(self, scheme: str | ColorScheme) -> None:
         """Set the color scheme of the glyph."""
         self._color_scheme = self._validate_and_create_color_scheme(scheme)
 
-    def _validate_and_create_color_scheme(
-        self, color_scheme: Union[str, ColorScheme]
-    ) -> ColorScheme:
+    def _validate_and_create_color_scheme(self, color_scheme: str | ColorScheme) -> ColorScheme:
         """Helper function to validate and create a ColorScheme object."""
         if isinstance(color_scheme, str):
             return ColorScheme(color_scheme)
@@ -388,7 +385,7 @@ class Glyph:
         img_path: FilePath,
         *,
         color_auto_detect: bool = True,
-        color_scheme: Optional[Union[str, ColorScheme]] = None,
+        color_scheme: str | ColorScheme | None = None,
     ) -> None:
         """Load an image file.
 
@@ -397,7 +394,7 @@ class Glyph:
             color_auto_detect (bool, optional): Whether to automatically detect the color scheme.
 
                 Defaults to `True`.
-            color_scheme (Union[str, ColorScheme], optional): The color scheme of the glyph.
+            color_scheme (str | ColorScheme | None, optional): The color scheme of the glyph.
 
         Raises:
             ValueError: If the color scheme is invalid.
@@ -449,7 +446,7 @@ class Glyph:
         img_path: FilePath,
         *,
         color_auto_detect: bool = True,
-        color_scheme: Optional[Union[str, ColorScheme]] = None,
+        color_scheme: str | ColorScheme | None = None,
     ) -> "Glyph":
         """Create a new Glyph object from a code point and an image file.
 
@@ -459,7 +456,7 @@ class Glyph:
             color_auto_detect (bool, optional): Whether to automatically detect the color scheme.
 
                 Defaults to `True`.
-            color_scheme (Union[str, ColorScheme], optional): The color scheme of the glyph.
+            color_scheme (str | ColorScheme | None, optional): The color scheme of the glyph.
 
         Returns:
             Glyph: The created glyph object.
@@ -472,14 +469,14 @@ class Glyph:
         self,
         save_path: FilePath,
         img_format: str = "PNG",
-        color_scheme: Optional[Union[str, ColorScheme]] = None,
+        color_scheme: str | ColorScheme | None = None,
     ) -> None:
         """Save Unifont glyphs as PNG images.
 
         Args:
             save_path (FilePath): The path to save the image.
             img_format (str, optional): The format of the image. Defaults to `PNG`.
-            color_scheme (Union[str, ColorScheme], optional): The color scheme of the   glyph.
+            color_scheme (str | ColorScheme | None, optional): The color scheme of the   glyph.
 
         Raises:
             ValueError: If the image format is not supported.
@@ -515,14 +512,14 @@ class Glyph:
     def print_glyph(
         self,
         *,
-        color_scheme: Optional[Union[str, ColorScheme]] = None,
+        color_scheme: str | ColorScheme | None = None,
         display_hex: bool = False,
         display_bin: bool = False,
     ) -> None:
         """Print a Unifont glyph to the console.
 
         Args:
-            color_scheme (Union[str, ColorScheme], optional): The color scheme of the glyph.
+            color_scheme (str | ColorScheme | None, optional): The color scheme of the glyph.
             display_hex (bool, optional): Whether to display the hexadecimal strings.
 
                 Defaults to `False`.
@@ -751,11 +748,11 @@ class GlyphSet:
         """
         self.remove_glyph(code_point)
 
-    def __add__(self, other: Union["GlyphSet", Glyph]) -> "GlyphSet":
+    def __add__(self, other: "GlyphSet | Glyph") -> "GlyphSet":
         """Add two glyph sets together.
 
         Args:
-            other (Union["GlyphSet", Glyph]): The other glyph set to add.
+            other ("GlyphSet" | Glyph): The other glyph set to add.
 
         Raises:
             TypeError: If the type of the other object is invalid.
@@ -773,11 +770,11 @@ class GlyphSet:
             raise TypeError("Invalid type for addition to GlyphSet.")
         return result
 
-    def __iadd__(self, other: Union["GlyphSet", Glyph]) -> "GlyphSet":
+    def __iadd__(self, other: "GlyphSet | Glyph") -> "GlyphSet":
         """Add another glyph set or glyph to the set in-place.
 
         Args:
-            other (Union["GlyphSet", Glyph]): The other glyph set or glyph to add.
+            other ("GlyphSet" | Glyph): The other glyph set or glyph to add.
 
         Raises:
             TypeError: If the type of the other object is invalid.
@@ -805,11 +802,11 @@ class GlyphSet:
         """Iterate through the glyphs in the set."""
         return iter(self._glyphs.values())
 
-    def __contains__(self, glyph: Union[Glyph, str]) -> bool:
+    def __contains__(self, glyph: Glyph | str) -> bool:
         """Check if a glyph is in the set.
 
         Args:
-            glyph (Union[Glyph, str]): The glyph to check.
+            glyph (Glyph | str): The glyph to check.
 
         Returns:
             bool: Whether the glyph is in the set.
@@ -870,11 +867,11 @@ class GlyphSet:
                 result.add_glyph((code_point, ""))
         return result
 
-    def add_glyph(self, glyph: Union[Glyph, tuple[CodePoint, str]]) -> None:
+    def add_glyph(self, glyph: Glyph | tuple[CodePoint, str]) -> None:
         """Add a glyph to the set.
 
         Args:
-            glyph (Union[Glyph, tuple[CodePoint, str]]): The glyph to add.
+            glyph (Glyph | tuple[CodePoint, str]): The glyph to add.
 
                 If a tuple is provided, it should be in the format of `(code_point, hex_str)`.
         """
@@ -894,11 +891,11 @@ class GlyphSet:
             raise KeyError(f"Glyph with code point U+{code_point} not found.")
         del self._glyphs[code_point]
 
-    def update_glyph(self, glyph: Union[Glyph, tuple[CodePoint, str]]) -> None:
+    def update_glyph(self, glyph: Glyph | tuple[CodePoint, str]) -> None:
         """Update a glyph in the set.
 
         Args:
-            glyph (Union[Glyph, tuple[CodePoint, str]]): The new glyph to update.
+            glyph (Glyph | tuple[CodePoint, str]): The new glyph to update.
 
                 If a tuple is provided, it should be in the format of `(code_point, hex_str)`.
         """
@@ -913,7 +910,7 @@ class GlyphSet:
             raise ValueError("Cannot sort an empty glyph set.")
         self._glyphs = dict(sorted(self._glyphs.items(), key=lambda x: int(x[0], 16)))
 
-    def _validate_and_create_glyph(self, glyph: Union[Glyph, tuple[CodePoint, str]]) -> Glyph:
+    def _validate_and_create_glyph(self, glyph: Glyph | tuple[CodePoint, str]) -> Glyph:
         """Helper function to validate and create a Glyph object."""
         if isinstance(glyph, Glyph):
             return glyph

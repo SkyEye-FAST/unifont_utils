@@ -4,12 +4,12 @@
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional, TypeAlias, Union
+from typing import TypeAlias
 
 # Type aliases
-FilePath: TypeAlias = Union[str, Path]
-CodePoint: TypeAlias = Union[str, int]
-CodePoints: TypeAlias = Union[Sequence[CodePoint], set[CodePoint]]
+FilePath: TypeAlias = str | Path
+CodePoint: TypeAlias = str | int
+CodePoints: TypeAlias = Sequence[CodePoint] | set[CodePoint]
 
 
 class Validator:
@@ -75,7 +75,7 @@ class Validator:
         return [Validator.code_point(code_point) for code_point in unique_code_points]
 
     @staticmethod
-    def hex_str(hex_str: Optional[str]) -> str:
+    def hex_str(hex_str: str | None) -> str:
         """Validate a hexadecimal string and return its normalized form.
 
         Args:

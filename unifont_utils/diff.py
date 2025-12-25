@@ -2,8 +2,6 @@
 # @Copyright: Copyright (C) 2024-2025 SkyEye_FAST
 """Unifont Utils - Diff"""
 
-from typing import Union
-
 from rich.console import Console
 from rich.table import Table
 from rich.text import Text
@@ -13,11 +11,11 @@ from .converter import Converter
 from .glyphs import Glyph
 
 
-def get_img_data(glyph: Union[str, Glyph]) -> list[int]:
+def get_img_data(glyph: str | Glyph) -> list[int]:
     """Input a `.hex` string or a Glyph object and output its image data.
 
     Args:
-        glyph (Union[str, Glyph]): The glyph to be converted.
+        glyph (str | Glyph): The glyph to be converted.
 
     Returns:
         list[int]: The converted image data.
@@ -34,12 +32,12 @@ def get_img_data(glyph: Union[str, Glyph]) -> list[int]:
     raise TypeError("The glyph must be either a .hex string or a Glyph object.")
 
 
-def diff_glyphs(glyph_a: Union[str, Glyph], glyph_b: Union[str, Glyph]) -> list[str]:
+def diff_glyphs(glyph_a: str | Glyph, glyph_b: str | Glyph) -> list[str]:
     """Compares two glyphs and returns a list of differences.
 
     Args:
-        glyph_a (Union[str, Glyph]): The first glyph to compare.
-        glyph_b (Union[str, Glyph]): The second glyph to compare.
+        glyph_a (str | Glyph): The first glyph to compare.
+        glyph_b (str | Glyph): The second glyph to compare.
 
     Returns:
         list[str]: A list of differences between the two glyphs.
@@ -58,16 +56,16 @@ def diff_glyphs(glyph_a: Union[str, Glyph], glyph_b: Union[str, Glyph]) -> list[
 
 
 def print_diff(
-    glyph_a: Union[str, Glyph],
-    glyph_b: Union[str, Glyph],
+    glyph_a: str | Glyph,
+    glyph_b: str | Glyph,
     *,
     black_and_white: bool = True,
 ) -> None:
     """Prints the differences between two glyphs.
 
     Args:
-        glyph_a (Union[str, Glyph]): The first glyph to compare.
-        glyph_b (Union[str, Glyph]): The second glyph to compare.
+        glyph_a (str | Glyph): The first glyph to compare.
+        glyph_b (str | Glyph): The second glyph to compare.
         black_and_white (bool, optional): Whether it is a black and white image.
 
             Defaults to `True`.
