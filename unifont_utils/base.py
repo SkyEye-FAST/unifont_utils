@@ -47,6 +47,18 @@ class Validator:
         return code_point.zfill(6 if len(code_point) > 4 else 4)
 
     @staticmethod
+    def code_point_display(code_point: CodePoint) -> str:
+        """Return a code point string formatted for display.
+
+        Pads to 4 digits when shorter, preserves 5-digit width (does not zero-pad to 6),
+        and keeps 6-digit values as-is. Always uppercase.
+        """
+        normalized = Validator.code_point(code_point)
+        if len(normalized) == 6 and normalized.startswith("0") and normalized[1] != "0":
+            return normalized[1:]
+        return normalized
+
+    @staticmethod
     def code_points(code_points: CodePoints) -> list[str]:
         """Validate acode point list and return its normalized form.
 

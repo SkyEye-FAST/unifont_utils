@@ -2,6 +2,9 @@
 # @Copyright: Copyright (C) 2024-2025 SkyEye_FAST
 """Unifont Utils - Console"""
 
+import io
+from contextlib import redirect_stdout
+
 import click
 
 from .base import Validator
@@ -25,7 +28,7 @@ def edit():
     """Edit the Unifont .hex glyphs."""
 
 
-@edit.command()
+@edit.command(name="file")
 @click.option(
     "--font_path",
     "--path",
@@ -34,13 +37,25 @@ def edit():
     type=click.Path(exists=True),
     help="The path to the Unifont .hex file.",
 )
-@click.option("--code_point", "--cp", required=True, type=str, help="The code point to edit.")
-@click.option("--output", "-o", default=None, help="Output file path for the edited font.")
-def hexfile(font_path, code_point, output):
+@click.option("--code_point", "--cp", "-c", required=True, type=str, help="The code point to edit.")
+@click.option(
+    "--output",
+    "-o",
+    default=None,
+    help="Output file path for the edited font. If provided, --overwrite is ignored.",
+)
+@click.option(
+    "--overwrite/--no-overwrite",
+    default=False,
+    show_default=True,
+    help="Overwrite the original .hex file when no --output is given.",
+)
+def hexfile(font_path, code_point, output, overwrite):
     """Edit a code point in the Unifont .hex file."""
     click.echo(f"Editing Unifont .hex file: {font_path}")
-    click.echo(f"Editing code point: {Validator.code_point(code_point)}\n")
-    output = output if output else output_path(font_path)
+    display_cp = Validator.code_point_display(code_point)
+    click.echo(f"Editing code point: {display_cp}\n")
+    output = output if output else (font_path if overwrite else output_path(font_path))
 
     glyphs = GlyphSet.load_hex_file(font_path)
     GlyphEditor(glyphs[code_point]).run()
@@ -49,18 +64,21 @@ def hexfile(font_path, code_point, output):
     click.echo(f"\nOutput saved to: {output}")
 
 
-@edit.command()
+@edit.command(name="str")
 @click.option("--code_point", "--cp", required=True, type=str, help="The code point to edit.")
 @click.option(
+    "--str",
     "--hex_str",
     "--hex",
+    "-s",
     required=True,
     type=str,
     help="The .hex format string to edit.",
 )
 def hexstr(code_point, hex_str):
     """Edit a single Unifont .hex format string."""
-    click.echo(f"Editing code point: {Validator.code_point(code_point)}")
+    display_cp = Validator.code_point_display(code_point)
+    click.echo(f"Editing code point: {display_cp}")
 
     click.echo(f"Editing .hex format string: {hex_str}")
     glyph = Glyph.init_from_hex(code_point, hex_str)
@@ -74,7 +92,8 @@ def hexstr(code_point, hex_str):
 @click.option("--width", "-w", default=16, type=int, help="The width of the glyph.")
 def empty(code_point, width):
     """Create an empty Unifont glyph for editing."""
-    click.echo(f"Editing code point: {Validator.code_point(code_point)}")
+    display_cp = Validator.code_point_display(code_point)
+    click.echo(f"Editing code point: {display_cp}")
     click.echo(f"Glyph width: {width}")
 
     glyph = Glyph.init_from_hex(code_point, "0" * (width * 4))
@@ -84,6 +103,218 @@ def empty(code_point, width):
     glyph.print_glyph(display_hex=True, display_bin=True)
 
 
+@cli.group(name="hex")
+def hex_group():
+    """Directly modify .hex files using raw strings."""
+
+
+def _resolve_output(font_path: str, output: str | None, overwrite: bool) -> str:
+    """Resolve the target output path based on user intent."""
+    return output if output else (font_path if overwrite else output_path(font_path))
+
+
+@hex_group.command(name="add")
+@click.option(
+    "--font_path",
+    "--path",
+    "-p",
+    required=True,
+    type=click.Path(exists=True),
+    help="The path to the Unifont .hex file to modify.",
+)
+@click.option("--code_point", "--cp", "-c", required=True, type=str, help="The code point to add.")
+@click.option(
+    "--hex_str",
+    "--hex",
+    "-s",
+    required=True,
+    type=str,
+    help="The .hex format string to write.",
+)
+@click.option(
+    "--output",
+    "-o",
+    default=None,
+    help="Output file path. If provided, --overwrite is ignored.",
+)
+@click.option(
+    "--overwrite/--no-overwrite",
+    default=False,
+    show_default=True,
+    help="Overwrite the original .hex file when no --output is given.",
+)
+def hex_add(font_path, code_point, hex_str, output, overwrite):
+    """Add a new code point entry to a .hex file."""
+    target = _resolve_output(font_path, output, overwrite)
+    glyphs = GlyphSet.load_hex_file(font_path)
+    try:
+        glyphs.add_glyph((code_point, hex_str))
+    except Exception as exc:  # pragma: no cover - delegated to Click for UX
+        raise click.ClickException(str(exc)) from exc
+
+    glyphs.save_hex_file(target)
+    display_cp = Validator.code_point_display(code_point)
+    click.echo(f"Added U+{display_cp} and saved to: {target}")
+
+
+@hex_group.command(name="replace")
+@click.option(
+    "--font_path",
+    "--path",
+    "-p",
+    required=True,
+    type=click.Path(exists=True),
+    help="The path to the Unifont .hex file to modify.",
+)
+@click.option(
+    "--code_point",
+    "--cp",
+    "-c",
+    required=True,
+    type=str,
+    help="The code point to replace.",
+)
+@click.option(
+    "--hex_str",
+    "--hex",
+    "-s",
+    required=True,
+    type=str,
+    help="The new .hex format string.",
+)
+@click.option(
+    "--output",
+    "-o",
+    default=None,
+    help="Output file path. If provided, --overwrite is ignored.",
+)
+@click.option(
+    "--overwrite/--no-overwrite",
+    default=False,
+    show_default=True,
+    help="Overwrite the original .hex file when no --output is given.",
+)
+def hex_replace(font_path, code_point, hex_str, output, overwrite):
+    """Replace an existing code point entry in a .hex file."""
+    target = _resolve_output(font_path, output, overwrite)
+    glyphs = GlyphSet.load_hex_file(font_path)
+    try:
+        glyphs.update_glyph((code_point, hex_str))
+    except Exception as exc:  # pragma: no cover - delegated to Click for UX
+        raise click.ClickException(str(exc)) from exc
+
+    glyphs.save_hex_file(target)
+    display_cp = Validator.code_point_display(code_point)
+    click.echo(f"Replaced U+{display_cp} and saved to: {target}")
+
+
+@hex_group.command(name="delete")
+@click.option(
+    "--font_path",
+    "--path",
+    "-p",
+    required=True,
+    type=click.Path(exists=True),
+    help="The path to the Unifont .hex file to modify.",
+)
+@click.option(
+    "--code_point", "--cp", "-c", required=True, type=str, help="The code point to delete."
+)
+@click.option(
+    "--output",
+    "-o",
+    default=None,
+    help="Output file path. If provided, --overwrite is ignored.",
+)
+@click.option(
+    "--overwrite/--no-overwrite",
+    default=False,
+    show_default=True,
+    help="Overwrite the original .hex file when no --output is given.",
+)
+def hex_delete(font_path, code_point, output, overwrite):
+    """Delete a code point entry from a .hex file."""
+    target = _resolve_output(font_path, output, overwrite)
+    glyphs = GlyphSet.load_hex_file(font_path)
+    try:
+        glyphs.remove_glyph(code_point)
+    except Exception as exc:  # pragma: no cover - delegated to Click for UX
+        raise click.ClickException(str(exc)) from exc
+
+    glyphs.save_hex_file(target)
+    display_cp = Validator.code_point_display(code_point)
+    click.echo(f"Deleted U+{display_cp} and saved to: {target}")
+
+
+@hex_group.command(name="view")
+@click.option(
+    "--font_path",
+    "--path",
+    "-p",
+    required=True,
+    type=click.Path(exists=True),
+    help="The path to the Unifont .hex file to read.",
+)
+@click.option(
+    "--code_point",
+    "--cp",
+    "-c",
+    required=True,
+    type=str,
+    help="The code point to view.",
+)
+def hex_view(font_path, code_point):
+    """Render a glyph from a .hex file in the console."""
+    glyphs = GlyphSet.load_hex_file(font_path)
+    try:
+        glyph = glyphs.get_glyph(code_point)
+    except Exception as exc:  # pragma: no cover - delegated to Click for UX
+        raise click.ClickException(str(exc)) from exc
+
+    display_cp = Validator.code_point_display(code_point)
+    click.echo(f"Viewing U+{display_cp} from {font_path}\n")
+    glyph.print_glyph(display_hex=True, display_bin=True)
+
+
+@hex_group.command(name="query")
+@click.option(
+    "--font_path",
+    "--path",
+    "-p",
+    required=True,
+    type=click.Path(exists=True),
+    help="The path to the Unifont .hex file to read.",
+)
+@click.option(
+    "--code_point",
+    "--cp",
+    "-c",
+    required=True,
+    type=str,
+    help="The code point to query.",
+)
+@click.option(
+    "--pure/--verbose",
+    default=False,
+    show_default=True,
+    help="Only output the glyph .hex string, suppressing load logs.",
+)
+def hex_query(font_path, code_point, pure):
+    """Print the .hex string for a glyph in a .hex file."""
+    if pure:
+        with redirect_stdout(io.StringIO()):
+            glyphs = GlyphSet.load_hex_file(font_path)
+    else:
+        glyphs = GlyphSet.load_hex_file(font_path)
+    try:
+        glyph = glyphs.get_glyph(code_point)
+    except Exception as exc:  # pragma: no cover - delegated to Click for UX
+        raise click.ClickException(str(exc)) from exc
+
+    display_cp = Validator.code_point_display(code_point)
+    click.echo(f"U+{display_cp}: {glyph.hex_str}")
+
+
 @cli.group()
 def convert():
     """Convert between Unifont formats."""
@@ -91,8 +322,10 @@ def convert():
 
 @convert.command()
 @click.option(
+    "--str",
     "--hex_str",
     "--hex",
+    "-s",
     required=True,
     type=str,
     help="The .hex format string to convert.",
@@ -113,6 +346,7 @@ def convert():
     help="The output image format.",
 )
 @click.option(
+    "-c",
     "--color_scheme",
     default="black_and_white",
     type=str,
@@ -137,6 +371,8 @@ def hex2img(hex_str, output, img_format, color_scheme):
 )
 @click.option(
     "--auto_detect",
+    "--auto",
+    "-a",
     is_flag=True,
     default=False,
     type=bool,
@@ -144,6 +380,7 @@ def hex2img(hex_str, output, img_format, color_scheme):
 )
 @click.option(
     "--color_scheme",
+    "-c",
     type=str,
     help="The color scheme for the output image.",
 )
@@ -206,7 +443,7 @@ def download(version, output, force, timeout):
 def info():
     """Show information about Unipie."""
     click.echo("Unipie - Unifont Pixel Interactive Editor\n")
-    click.echo("Unipie v0.3.0")
+    click.echo("Unipie v0.3.1")
     click.echo("Written by SkyEye_FAST")
 
 

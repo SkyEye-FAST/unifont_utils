@@ -10,6 +10,7 @@ from textual.app import App, ComposeResult
 from textual.reactive import reactive
 from textual.widgets import Footer, Header, Static
 
+from .base import Validator
 from .glyphs import Glyph, ReplacePattern, SearchPattern
 
 
@@ -103,9 +104,10 @@ class EditWidget(Static, can_focus=True):
             justify="center",
             style="bold",
         )
+        display_cp = Validator.code_point_display(self.glyph.code_point)
         panel = Panel(
             glyph,
-            title=f"U+{self.glyph.code_point} ({self.glyph.character})",
+            title=f"U+{display_cp} ({self.glyph.character})",
             subtitle=position,
         )
 
@@ -269,9 +271,10 @@ class ReplaceWidget(Static, can_focus=True):
             justify="center",
             style="bold",
         )
+        display_cp = Validator.code_point_display(self.glyph.code_point)
         panel = Panel(
             glyph,
-            title=f"U+{self.glyph.code_point} ({self.glyph.character})",
+            title=f"U+{display_cp} ({self.glyph.character})",
             subtitle=match_index_text,
         )
 

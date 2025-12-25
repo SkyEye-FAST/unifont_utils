@@ -249,10 +249,8 @@ class Glyph:
         Returns:
             str: The string representation of the glyph.
         """
-        code_point = self._code_point
-        if len(self._code_point) == 6 and self._code_point.startswith("0"):
-            code_point = code_point[1:]
-        return f"Unifont Glyph (U+{code_point})"
+        display_cp = Validator.code_point_display(self._code_point)
+        return f"Unifont Glyph (U+{display_cp})"
 
     def __add__(self, other: "Glyph") -> "GlyphSet":
         """Add two glyphs together.
@@ -847,7 +845,8 @@ class GlyphSet:
         try:
             return self._glyphs[code_point]
         except KeyError as exc:
-            raise KeyError(f"Glyph with code point U+{code_point} not found.") from exc
+            display_cp = Validator.code_point_display(code_point)
+            raise KeyError(f"Glyph with code point U+{display_cp} not found.") from exc
 
     def get_glyphs(self, code_points: CodePoints, *, skip_empty: bool = True) -> "GlyphSet":
         """Get a set of glyphs by their code points.
@@ -884,7 +883,8 @@ class GlyphSet:
         """
         glyph_obj = self._validate_and_create_glyph(glyph)
         if glyph_obj.code_point in self._glyphs:
-            raise ValueError(f"Glyph with code point U+{glyph_obj.code_point} already exists.")
+            display_cp = Validator.code_point_display(glyph_obj.code_point)
+            raise ValueError(f"Glyph with code point U+{display_cp} already exists.")
         self._glyphs[glyph_obj.code_point] = glyph_obj
 
     def remove_glyph(self, code_point: CodePoint) -> None:
@@ -895,7 +895,8 @@ class GlyphSet:
         """
         code_point = Validator.code_point(code_point)
         if code_point not in self._glyphs:
-            raise KeyError(f"Glyph with code point U+{code_point} not found.")
+            display_cp = Validator.code_point_display(code_point)
+            raise KeyError(f"Glyph with code point U+{display_cp} not found.")
         del self._glyphs[code_point]
 
     def update_glyph(self, glyph: Glyph | tuple[CodePoint, str]) -> None:
@@ -908,7 +909,8 @@ class GlyphSet:
         """
         glyph_obj = self._validate_and_create_glyph(glyph)
         if glyph_obj.code_point not in self._glyphs:
-            raise KeyError(f"Glyph with code point U+{glyph_obj.code_point} not found.")
+            display_cp = Validator.code_point_display(glyph_obj.code_point)
+            raise KeyError(f"Glyph with code point U+{display_cp} not found.")
         self._glyphs[glyph_obj.code_point].hex_str = glyph_obj.hex_str
 
     def sort_glyphs(self) -> None:
