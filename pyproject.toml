@@ -3,7 +3,7 @@ name = "unifont_utils"
 version = "0.6.0"
 description = "Unifont Utilities, but rewritten in Python."
 authors = [{ name = "SkyEye_FAST", email = "skyeyefast@foxmail.com" }]
-requires-python = ">=3.9,<4.0"
+requires-python = ">=3.10,<4.0"
 readme = "README.rst"
 license = "GPL-3.0-or-later"
 keywords = ["unifont"]
@@ -13,7 +13,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Natural Language :: English",
     "Natural Language :: Chinese (Simplified)",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
