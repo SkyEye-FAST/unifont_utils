@@ -3,8 +3,9 @@
 """Unifont Utils - Glyphs"""
 
 import time
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
+from typing import cast
 from unicodedata import name
 
 from PIL import Image as Img
@@ -180,9 +181,9 @@ class ColorScheme:
 
     _scheme_name: str
     """The name of the color scheme."""
-    _color_map: dict[int, str]
+    _color_map: dict[str, int]
     """The color map of the color scheme."""
-    _available_schemes = {
+    _available_schemes: dict[str, dict[str, int]] = {
         "black_and_white": {"white": 0, "black": 1},
         "inverted_black_and_white": {"black": 0, "white": 1},
         "transparent_and_black": {"transparent": 0, "black": 1},
@@ -202,7 +203,7 @@ class ColorScheme:
         if scheme_name not in self._available_schemes:
             raise ValueError(f"Invalid color scheme: {scheme_name}")
         self._scheme_name = scheme_name
-        self._color_map = self._available_schemes[scheme_name]
+        self._color_map = dict(self._available_schemes[scheme_name])
 
     def __str__(self) -> str:
         """Return the string representation of the color scheme.
@@ -218,7 +219,7 @@ class ColorScheme:
         return self._scheme_name
 
     @property
-    def color_map(self) -> dict[int, str]:
+    def color_map(self) -> dict[str, int]:
         """The color map of the color scheme."""
         return self._color_map
 
@@ -402,25 +403,30 @@ class Glyph:
         """
         if color_scheme is None and not color_auto_detect:
             raise ValueError("You must specify a color scheme if automatic detection is disabled.")
+        resolved_color_scheme: ColorScheme | None = None
         if color_scheme is not None:
             color_auto_detect = False
-            color_scheme = self._validate_and_create_color_scheme(color_scheme)
+            resolved_color_scheme = self._validate_and_create_color_scheme(color_scheme)
         img_path = Validator.file_path(img_path)
         if not img_path.is_file():
             raise FileNotFoundError(f"File not found: {img_path}")
 
         img = Img.open(img_path).convert("RGBA")
-        rgba_values = list(img.getdata())
+        rgba_values = list(cast(Iterable[tuple[int, int, int, int]], img.getdata()))
         if color_auto_detect:
             try:
-                color_scheme = self._auto_detect_color_scheme(img.size[0], rgba_values)
-                color_scheme = self._validate_and_create_color_scheme(color_scheme)
+                detected_scheme_name = self._auto_detect_color_scheme(img.size[0], rgba_values)
+                resolved_color_scheme = self._validate_and_create_color_scheme(detected_scheme_name)
             except ValueError as e:
                 print(f"Warning: {e}. The glyph will not be changed.")
                 return
-        self.color_scheme = color_scheme
+        if resolved_color_scheme is None:
+            raise ValueError("Failed to determine color scheme.")
+
+        self.color_scheme = resolved_color_scheme
         self._width = img.size[0]
-        data = [color_scheme.color_map[COLOR_VALUE_MAP[pixel]] for pixel in rgba_values]
+        data = [resolved_color_scheme.color_map[COLOR_VALUE_MAP[pixel]] for pixel in rgba_values]
+        self._data = data
         self._hex_str = Converter.to_hex(data)
 
     @classmethod
@@ -461,6 +467,7 @@ class Glyph:
         Returns:
             Glyph: The created glyph object.
         """
+        code_point = Validator.code_point(code_point)
         g = cls(code_point)
         g.load_img(img_path, color_auto_detect=color_auto_detect, color_scheme=color_scheme)
         return g

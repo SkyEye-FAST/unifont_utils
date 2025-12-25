@@ -13,6 +13,15 @@ from textual.widgets import Footer, Header, Static
 from .glyphs import Glyph, ReplacePattern, SearchPattern
 
 
+def is_app_dark(app: App) -> bool:
+    """Return True when the current theme is dark.
+
+    Textual dropped the old `App.dark` flag; use the active theme metadata instead.
+    """
+    theme = app.get_theme(app.theme)
+    return bool(theme.dark) if theme else False
+
+
 class EditWidget(Static, can_focus=True):
     """Widget to display and edit a Glyph."""
 
@@ -57,9 +66,10 @@ class EditWidget(Static, can_focus=True):
             return "auto" if i % 2 == 0 else ("green" if i > 9 else "red")
 
         def get_pixel_color(value: int) -> str:
+            dark_theme = is_app_dark(self.app)
             if value:
-                return "white" if self.app.dark else "black"
-            return "black" if self.app.dark else "white"
+                return "white" if dark_theme else "black"
+            return "black" if dark_theme else "white"
 
         def get_block_style(is_cursor: bool, data_value: int) -> str:
             """Get style for the glyph block."""
@@ -213,9 +223,10 @@ class ReplaceWidget(Static, can_focus=True):
             return "auto" if i % 2 == 0 else ("green" if i > 9 else "red")
 
         def get_pixel_color(value: int) -> str:
+            dark_theme = is_app_dark(self.app)
             if value == 1:
-                return "white" if self.app.dark else "black"
-            return "black" if self.app.dark else "white"
+                return "white" if dark_theme else "black"
+            return "black" if dark_theme else "white"
 
         def get_block_style(i: int, j: int, current_match: tuple[int, int]) -> str:
             width = self.glyph.width
@@ -309,7 +320,7 @@ class GlyphEditor(App):
 
     def action_toggle_dark(self) -> None:
         """An action to toggle dark mode."""
-        self.dark = not self.dark
+        self.theme = "textual-light" if is_app_dark(self) else "textual-dark"
         if self.edit_widget:
             self.edit_widget.render_glyph()
 
@@ -350,7 +361,7 @@ class GlyphReplacer(App):
 
     def action_toggle_dark(self) -> None:
         """An action to toggle dark mode."""
-        self.dark = not self.dark
+        self.theme = "textual-light" if is_app_dark(self) else "textual-dark"
         if self.replace_widget:
             self.replace_widget.render_glyph()
 
