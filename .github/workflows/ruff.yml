@@ -3,16 +3,23 @@ name: Ruff
 on: [push, pull_request]
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.14"]
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Ruff Lint and Format
-        uses: adityabhangle658/ruff-python-lint-format-check-pr@v1.0.3
+
+      - name: Install project (lint deps)
+        run: uv sync --all-extras --dev --group dev
+
+      - name: Run Ruff
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: "check ."
