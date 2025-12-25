@@ -67,10 +67,12 @@ class Validator:
             )
         if not all(isinstance(c, (str, int)) for c in code_points):
             raise TypeError("The code points in the list must be strings or integers.")
+        unique_code_points = {
+            int(code_point, 16) if isinstance(code_point, str) else int(code_point)
+            for code_point in code_points
+        }
 
-        code_points_list = [hex(int(i))[2:].zfill(4) for i in list(set(code_points))]
-
-        return [Validator.code_point(code_point) for code_point in code_points_list]
+        return [Validator.code_point(code_point) for code_point in unique_code_points]
 
     @staticmethod
     def hex_str(hex_str: Optional[str]) -> str:
@@ -87,6 +89,8 @@ class Validator:
         """
         if not hex_str:
             return ""
+
+        hex_str = hex_str.upper()
 
         if len(hex_str) not in {32, 64}:
             raise ValueError(f"Invalid .hex string length: {hex_str} (length: {len(hex_str)}).")
