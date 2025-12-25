@@ -20,7 +20,16 @@ class UnifontDownloader:
 
     BASE_URL = "https://unifoundry.com/pub/unifont/"
     MIN_MAJOR = 7
-    ARCHIVE_TEMPLATE = "unifont-{version}/font-builds/unifont_all-{version}.hex.gz"
+    DEFAULT_VARIANT = "unifont_all"
+    ALLOWED_VARIANTS = (
+        "unifont",
+        "unifont_all",
+        "unifont_jp",
+        "unifont_jp_sample",
+        "unifont_sample",
+        "unifont_upper",
+        "unifont_upper_sample",
+    )
 
     def __init__(self, timeout: int = 30) -> None:
         """Initialize the downloader with an optional request timeout."""
@@ -44,6 +53,15 @@ class UnifontDownloader:
             raise ValueError(f"Unifont version must be >= {cls.MIN_MAJOR}.0.0.")
 
         return version_str
+
+    @classmethod
+    def normalize_variant(cls, variant: str | None) -> str:
+        """Validate and normalize the requested font build variant."""
+        normalized = (variant or cls.DEFAULT_VARIANT).strip().lower()
+        if normalized not in cls.ALLOWED_VARIANTS:
+            allowed = ", ".join(cls.ALLOWED_VARIANTS)
+            raise ValueError(f"Invalid variant '{normalized}'. Allowed: {allowed}.")
+        return normalized
 
     @staticmethod
     def _version_key(version: str) -> tuple[int, int, int]:
@@ -74,10 +92,12 @@ class UnifontDownloader:
             raise RuntimeError("Unable to determine latest Unifont version (>=7.x).")
         return versions[-1]
 
-    def build_download_url(self, version: str) -> str:
-        """Build the download URL for the given version."""
-        normalized = self.normalize_version(version)
-        return f"{self.BASE_URL}{self.ARCHIVE_TEMPLATE.format(version=normalized)}"
+    def build_download_url(self, version: str, *, variant: str | None = None) -> str:
+        """Build the download URL for the given version and variant."""
+        normalized_version = self.normalize_version(version)
+        normalized_variant = self.normalize_variant(variant)
+        filename = f"{normalized_variant}-{normalized_version}.hex.gz"
+        return f"{self.BASE_URL}unifont-{normalized_version}/font-builds/{filename}"
 
     def download_hex(
         self,
@@ -85,6 +105,7 @@ class UnifontDownloader:
         output: FilePath | None = None,
         *,
         force: bool = False,
+        variant: str | None = None,
         progress_callback: Callable[[int, int | None], None] | None = None,
     ) -> tuple[Path, str]:
         """Download and extract a Unifont `.hex` file.
@@ -92,17 +113,18 @@ class UnifontDownloader:
         Returns the destination path and resolved version string.
         """
         target_version = self.normalize_version(version) if version else self.latest_version()
+        target_variant = self.normalize_variant(variant)
         output_path = (
             Validator.file_path(output)
             if output
-            else Path.cwd() / f"unifont_all-{target_version}.hex"
+            else Path.cwd() / f"{target_variant}-{target_version}.hex"
         )
 
         if output_path.exists() and not force:
             raise FileExistsError(f"Destination already exists: {output_path}")
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        archive_url = self.build_download_url(target_version)
+        archive_url = self.build_download_url(target_version, variant=target_variant)
 
         tmp_fd, tmp_name = tempfile.mkstemp(suffix=".gz")
         os.close(tmp_fd)

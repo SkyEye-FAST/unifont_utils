@@ -37,6 +37,10 @@ def test_build_download_url_uses_template():
         downloader.build_download_url("17.0.03")
         == "https://unifoundry.com/pub/unifont/unifont-17.0.03/font-builds/unifont_all-17.0.03.hex.gz"
     )
+    assert (
+        downloader.build_download_url("17.0.03", variant="Unifont_JP")
+        == "https://unifoundry.com/pub/unifont/unifont-17.0.03/font-builds/unifont_jp-17.0.03.hex.gz"
+    )
 
 
 def test_download_hex_uses_latest_and_writes_file(tmp_path, monkeypatch):
@@ -56,3 +60,12 @@ def test_download_hex_uses_latest_and_writes_file(tmp_path, monkeypatch):
     assert version == "17.0.03"
     assert path == output
     assert path.read_text(encoding="utf-8") == "0041:0000\n"
+
+
+def test_normalize_variant_guards_allowed_set():
+    """Only allow known variants and normalize casing."""
+    assert UnifontDownloader.normalize_variant(None) == "unifont_all"
+    assert UnifontDownloader.normalize_variant("UnIfOnT_Upper_Sample") == "unifont_upper_sample"
+
+    with pytest.raises(ValueError):
+        UnifontDownloader.normalize_variant("unknown")

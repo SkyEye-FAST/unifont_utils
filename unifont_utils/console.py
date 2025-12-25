@@ -400,10 +400,22 @@ def img2hex(img_path, auto_detect, color_scheme):
     help="Unifont version (>=7.x). If omitted, the latest available version is used.",
 )
 @click.option(
+    "--variant",
+    "-t",
+    type=click.Choice(UnifontDownloader.ALLOWED_VARIANTS, case_sensitive=False),
+    default=UnifontDownloader.DEFAULT_VARIANT,
+    show_default=True,
+    help=(
+        "Unifont font-build variant to download. Supported: "
+        "unifont, unifont_all, unifont_jp, unifont_jp_sample, "
+        "unifont_sample, unifont_upper, unifont_upper_sample."
+    ),
+)
+@click.option(
     "--output",
     "-o",
     type=click.Path(),
-    help="Destination .hex file path. Defaults to ./unifont_all-<version>.hex.",
+    help="Destination .hex file path. Defaults to ./<variant>-<version>.hex.",
 )
 @click.option("--force", "-f", is_flag=True, help="Overwrite the output file if it exists.")
 @click.option(
@@ -413,7 +425,7 @@ def img2hex(img_path, auto_detect, color_scheme):
     type=int,
     help="Network timeout in seconds for downloading.",
 )
-def download(version, output, force, timeout):
+def download(version, variant, output, force, timeout):
     """Download and extract a Unifont .hex release."""
     downloader = UnifontDownloader(timeout=timeout)
 
@@ -429,6 +441,7 @@ def download(version, output, force, timeout):
 
             output_path, resolved_version = downloader.download_hex(
                 version=version,
+                variant=variant,
                 output=output,
                 force=force,
                 progress_callback=progress,
