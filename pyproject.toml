@@ -21,7 +21,12 @@ classifiers = [
     "Topic :: Text Processing :: Fonts",
     "Topic :: Utilities",
 ]
-dependencies = ["pillow>=10.0", "textual>=0.80.0", "click>=8.1.0"]
+dependencies = [
+    "pillow>=10.0",
+    "textual>=0.80.0",
+    "click>=8.1.0",
+    "requests>=2.31",
+]
 
 [project.urls]
 Repository = "https://github.com/SkyEye-FAST/unifont_utils"

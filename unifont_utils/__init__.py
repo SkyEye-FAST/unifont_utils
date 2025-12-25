@@ -9,5 +9,6 @@ __email__ = "skyeyefast@foxmail.com"
 
 from .converter import Converter
 from .diff import diff_glyphs, print_diff
+from .downloader import UnifontDownloader
 from .editor import GlyphEditor, GlyphReplacer
 from .glyphs import Glyph, GlyphSet, ReplacePattern, SearchPattern

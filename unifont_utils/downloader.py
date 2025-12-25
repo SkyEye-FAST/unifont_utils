@@ -1,0 +1,180 @@
+# @Author: SkyEye_FAST <skyeyefast@foxmail.com>
+# @Copyright: Copyright (C) 2024-2025 SkyEye_FAST
+"""Unifont Utils - Downloader"""
+
+from __future__ import annotations
+
+import gzip
+import os
+import re
+import shutil
+import tempfile
+from collections.abc import Callable, Iterable
+from pathlib import Path
+
+import requests
+
+from .base import FilePath, Validator
+
+
+class UnifontDownloader:
+    """Helper for downloading and extracting Unifont releases."""
+
+    BASE_URL = "https://unifoundry.com/pub/unifont/"
+    MIN_MAJOR = 7
+    ARCHIVE_TEMPLATE = "unifont-{version}/font-builds/unifont_all-{version}.hex.gz"
+
+    def __init__(self, timeout: int = 30) -> None:
+        """Initialize the downloader with an optional request timeout."""
+        self.timeout = timeout
+
+    @classmethod
+    def normalize_version(cls, version: str | int) -> str:
+        """Normalize and validate a Unifont version string.
+
+        Accepts versions like ``17.0.03`` or ``v17.0.03`` and enforces a minimum
+        major version of ``7``.
+        """
+        version_str = str(version).strip()
+        if version_str.startswith(("v", "V")):
+            version_str = version_str[1:]
+
+        if not re.fullmatch(r"\d+\.\d+\.\d+", version_str):
+            raise ValueError("Invalid version format. Expected <major>.<minor>.<patch>.")
+
+        if cls._version_key(version_str)[0] < cls.MIN_MAJOR:
+            raise ValueError(f"Unifont version must be >= {cls.MIN_MAJOR}.0.0.")
+
+        return version_str
+
+    @staticmethod
+    def _version_key(version: str) -> tuple[int, int, int]:
+        """Return a sortable tuple for a version string."""
+        try:
+            major, minor, patch = (int(part) for part in version.split("."))
+        except ValueError as exc:  # pragma: no cover - defensive guard
+            raise ValueError(f"Invalid version string: {version}") from exc
+        return major, minor, patch
+
+    @classmethod
+    def parse_versions(cls, content: str) -> list[str]:
+        """Parse available versions from an index page."""
+        versions: set[str] = set()
+        for match in re.findall(r"unifont-((?:\d+\.){2}\d+)/", content):
+            parts = match.split(".")
+            if len(parts) != 3 or not all(part.isdigit() for part in parts):
+                continue
+            if int(parts[0]) >= cls.MIN_MAJOR:
+                versions.add(match)
+        return sorted(versions, key=cls._version_key)
+
+    def latest_version(self) -> str:
+        """Return the latest available Unifont version (>=7.x)."""
+        content = self._fetch_text(self.BASE_URL)
+        versions = self.parse_versions(content)
+        if not versions:
+            raise RuntimeError("Unable to determine latest Unifont version (>=7.x).")
+        return versions[-1]
+
+    def build_download_url(self, version: str) -> str:
+        """Build the download URL for the given version."""
+        normalized = self.normalize_version(version)
+        return f"{self.BASE_URL}{self.ARCHIVE_TEMPLATE.format(version=normalized)}"
+
+    def download_hex(
+        self,
+        version: str | int | None = None,
+        output: FilePath | None = None,
+        *,
+        force: bool = False,
+        progress_callback: Callable[[int, int | None], None] | None = None,
+    ) -> tuple[Path, str]:
+        """Download and extract a Unifont `.hex` file.
+
+        Returns the destination path and resolved version string.
+        """
+        target_version = self.normalize_version(version) if version else self.latest_version()
+        output_path = (
+            Validator.file_path(output)
+            if output
+            else Path.cwd() / f"unifont_all-{target_version}.hex"
+        )
+
+        if output_path.exists() and not force:
+            raise FileExistsError(f"Destination already exists: {output_path}")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        archive_url = self.build_download_url(target_version)
+
+        tmp_fd, tmp_name = tempfile.mkstemp(suffix=".gz")
+        os.close(tmp_fd)
+        tmp_path = Path(tmp_name)
+        try:
+            self._download_file(archive_url, tmp_path, progress_callback=progress_callback)
+            self._extract_gzip(tmp_path, output_path)
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+        return output_path, target_version
+
+    def _download_file(
+        self,
+        url: str,
+        destination: Path,
+        *,
+        progress_callback: Callable[[int, int | None], None] | None = None,
+    ) -> None:
+        """Download a file to the destination path."""
+        headers = {
+            "User-Agent": "unifont-utils/0.6 (+https://github.com/SkyEye-FAST/unifont_utils)",
+        }
+
+        try:
+            with requests.get(url, headers=headers, timeout=self.timeout, stream=True) as response:
+                response.raise_for_status()
+
+                total = int(response.headers.get("Content-Length", 0)) or None
+                downloaded = 0
+                chunk_size = 1024 * 64
+
+                if progress_callback:
+                    progress_callback(downloaded, total)
+
+                with destination.open("wb") as file:
+                    for chunk in self._iter_chunks(response.iter_content(chunk_size)):
+                        file.write(chunk)
+                        downloaded += len(chunk)
+                        if progress_callback:
+                            progress_callback(downloaded, total)
+        except requests.RequestException as exc:
+            raise RuntimeError(f"Failed to download Unifont archive from {url}: {exc}") from exc
+
+    @staticmethod
+    def _iter_chunks(chunks: Iterable[bytes]) -> Iterable[bytes]:
+        """Yield non-empty chunks from a streaming response."""
+        for chunk in chunks:
+            if chunk:
+                yield chunk
+
+    def _extract_gzip(self, source: Path, destination: Path) -> None:
+        """Extract a gzip file to the destination path."""
+        try:
+            with gzip.open(source, "rb") as gz_file, destination.open("wb") as out_file:
+                shutil.copyfileobj(gz_file, out_file)
+        except OSError as exc:
+            raise RuntimeError(f"Failed to extract archive {source}: {exc}") from exc
+
+    def _fetch_text(self, url: str) -> str:
+        """Fetch text content from a URL."""
+        try:
+            response = requests.get(
+                url,
+                headers={
+                    "User-Agent": "unifont-utils/0.6 (+https://github.com/SkyEye-FAST/unifont_utils)",
+                },
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+            return response.text
+        except requests.RequestException as exc:
+            raise RuntimeError(f"Failed to fetch {url}: {exc}") from exc

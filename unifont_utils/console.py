@@ -5,6 +5,7 @@
 import click
 
 from .base import Validator
+from .downloader import UnifontDownloader
 from .editor import GlyphEditor
 from .glyphs import Glyph, GlyphSet
 
@@ -156,10 +157,56 @@ def img2hex(img_path, auto_detect, color_scheme):
 
 
 @cli.command()
+@click.option(
+    "--version",
+    "-v",
+    help="Unifont version (>=7.x). If omitted, the latest available version is used.",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    help="Destination .hex file path. Defaults to ./unifont_all-<version>.hex.",
+)
+@click.option("--force", "-f", is_flag=True, help="Overwrite the output file if it exists.")
+@click.option(
+    "--timeout",
+    default=30,
+    show_default=True,
+    type=int,
+    help="Network timeout in seconds for downloading.",
+)
+def download(version, output, force, timeout):
+    """Download and extract a Unifont .hex release."""
+    downloader = UnifontDownloader(timeout=timeout)
+
+    try:
+        initial_length = 0
+        with click.progressbar(length=initial_length, label="Downloading", show_eta=False) as bar:
+
+            def progress(downloaded: int, total: int | None) -> None:
+                if total and bar.length != total:
+                    bar.length = total
+                    bar.show_eta = True
+                bar.update(downloaded - bar.pos)
+
+            output_path, resolved_version = downloader.download_hex(
+                version=version,
+                output=output,
+                force=force,
+                progress_callback=progress,
+            )
+    except Exception as exc:  # pragma: no cover - delegated to Click for UX
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(f"Downloaded Unifont {resolved_version} to: {output_path}")
+
+
+@cli.command()
 def info():
     """Show information about Unipie."""
     click.echo("Unipie - Unifont Pixel Interactive Editor\n")
-    click.echo("Unipie v0.2.0")
+    click.echo("Unipie v0.3.0")
     click.echo("Written by SkyEye_FAST")
 
 
