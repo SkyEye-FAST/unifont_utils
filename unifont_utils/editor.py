@@ -15,16 +15,65 @@ from .glyphs import Glyph, ReplacePattern, SearchPattern
 
 
 def is_app_dark(app: App) -> bool:
-    """Return True when the current theme is dark.
+    """Return True if the given Textual `App` uses a dark theme.
 
-    Textual dropped the old `App.dark` flag; use the active theme metadata instead.
+    Args:
+        app (App): Running Textual application.
+
+    Returns:
+        bool: True for dark theme, False otherwise.
     """
     theme = app.get_theme(app.theme)
     return bool(theme.dark) if theme else False
 
 
+def _hex_index(index: int) -> str:
+    """Return a two-character uppercase hexadecimal string for an index.
+
+    Args:
+        index (int): The numeric index to convert (e.g. column or row index).
+
+    Returns:
+        str: Two-character, zero-padded, uppercase hexadecimal representation.
+    """
+    return hex(index)[2:].rjust(2).upper()
+
+
+def _color_by_index(index: int) -> str:
+    """Return a color name for a header index.
+
+    Args:
+        index (int): Header index.
+
+    Returns:
+        str: Color name for styling.
+    """
+    return "auto" if index % 2 == 0 else ("green" if index > 9 else "red")
+
+
+def _pixel_color(value: int, dark_theme: bool) -> str:
+    """Return 'white' or 'black' for a pixel to contrast the theme.
+
+    Args:
+        value (int): Pixel value (0 or 1).
+        dark_theme (bool): True when theme is dark.
+
+    Returns:
+        str: Chosen color name.
+    """
+    if value:
+        return "white" if dark_theme else "black"
+    return "black" if dark_theme else "white"
+
+
 class EditWidget(Static, can_focus=True):
-    """Widget to display and edit a Glyph."""
+    """Focusable widget for viewing and editing a single `Glyph`.
+
+    Attributes:
+        cursor_x (int): Current cursor column (reactive).
+        cursor_y (int): Current cursor row (reactive).
+        glyph (Glyph): Glyph being edited.
+    """
 
     cursor_x = reactive(0)
     cursor_y = reactive(0)
@@ -49,54 +98,36 @@ class EditWidget(Static, can_focus=True):
         self.glyph = glyph
 
     def on_mount(self) -> None:
-        """Actions that are executed when the widget is mounted."""
+        """Initialize widget: render glyph and set focus."""
         self.render_glyph()
         self.focus()
 
     def watch_cursor_x(self) -> None:
-        """Watch for changes to the `cursor_x` or `cursor_y` attribute."""
+        """Re-render when cursor position changes."""
         self.render_glyph()
 
     watch_cursor_y = watch_cursor_x
 
     def render_glyph(self) -> None:
-        """Render the glyph with the current cursor position."""
-
-        def get_color(i: int) -> str:
-            """Get color based on index."""
-            return "auto" if i % 2 == 0 else ("green" if i > 9 else "red")
-
-        def get_pixel_color(value: int) -> str:
-            dark_theme = is_app_dark(self.app)
-            if value:
-                return "white" if dark_theme else "black"
-            return "black" if dark_theme else "white"
-
-        def get_block_style(is_cursor: bool, data_value: int) -> str:
-            """Get style for the glyph block."""
-            pixel = get_pixel_color(data_value)
-            return f"{'red' if is_cursor else pixel} on {pixel}"
-
-        def get_nums(i: int) -> str:
-            """Get the hexadecimal representation of index."""
-            return hex(i)[2:].rjust(2).upper()
-
+        """Render the glyph grid, headers, and cursor state into the widget."""
+        dark_theme = is_app_dark(self.app)
         width = self.glyph.width
         glyph = Text("\n  ")
-        # Columns
-        for i in range(width):
-            glyph.append(get_nums(i), style=f"{get_color(i)} bold")
+
+        for col in range(width):
+            glyph.append(_hex_index(col), style=f"{_color_by_index(col)} bold")
         glyph.append("\n")
 
-        for i in range(16):
-            # Rows
-            glyph.append(f"{get_nums(i)} ", style=f"{get_color(i)} bold")
-            # Glyph pixel blocks
-            for j in range(width):
-                is_cursor = self.cursor_x == j % width and self.cursor_y == i
-                block_style = get_block_style(is_cursor, self.glyph.data[i * width + j])
-                char = "⬥ " if is_cursor else "  "
-                glyph.append(char, style=block_style)
+        for row in range(16):
+            glyph.append(f"{_hex_index(row)} ", style=f"{_color_by_index(row)} bold")
+            for col in range(width):
+                cursor_selected = self.cursor_x == col % width and self.cursor_y == row
+                pixel_value = self.glyph.data[row * width + col]
+                pixel_color = _pixel_color(pixel_value, dark_theme)
+                block_foreground = "red" if cursor_selected else pixel_color
+                glyph.append(
+                    "⬥ " if cursor_selected else "  ", style=f"{block_foreground} on {pixel_color}"
+                )
             glyph.append("\n")
 
         position = Text(
@@ -114,11 +145,11 @@ class EditWidget(Static, can_focus=True):
         self.update(Group(Text(self.glyph.unicode_name, justify="center", style="bold"), panel))
 
     def _get_index(self) -> int:
-        """Get the index of the current cursor position."""
+        """Return linear index into `glyph.data` for current cursor."""
         return self.cursor_y * self.glyph.width + self.cursor_x
 
     def _move_cursor(self, dx: int, dy: int) -> None:
-        """Move cursor by the given offsets."""
+        """Move cursor by (dx, dy), clamped to glyph bounds."""
         self.cursor_x = min(max(0, self.cursor_x + dx), self.glyph.width - 1)
         self.cursor_y = min(max(0, self.cursor_y + dy), 15)
 
@@ -139,7 +170,7 @@ class EditWidget(Static, can_focus=True):
         self._move_cursor(1, 0)
 
     def action_toggle_glyph(self) -> None:
-        """Toggle the glyph's visibility."""
+        """Flip the pixel under the cursor and re-render."""
         index = self._get_index()
         self.glyph.update_data_at_index(index, int(not self.glyph.data[index]))
         self.render_glyph()
@@ -149,7 +180,12 @@ class EditWidget(Static, can_focus=True):
         self.app.exit()
 
     def _handle_mouse_event(self, event, update_data: bool = False) -> None:
-        """Handle mouse events for click and movement."""
+        """Handle mouse interactions; update cursor and optionally pixel data.
+
+        Args:
+            event: Textual mouse event with `x`, `y`, `button`, `ctrl`.
+            update_data (bool): Write pixel changes when True.
+        """
         grid_x = (event.x - 5) // 2
         grid_y = event.y - 4
 
@@ -176,7 +212,13 @@ class EditWidget(Static, can_focus=True):
 
 
 class ReplaceWidget(Static, can_focus=True):
-    """Widget to display and edit a Glyph."""
+    """Widget to preview and apply replace patterns on a `Glyph`.
+
+    Attributes:
+        match_index (int): Selected match index (reactive).
+        matches (list): Match positions in the glyph.
+        glyph (Glyph): Glyph under inspection.
+    """
 
     match_index = reactive(0)
     matches = []
@@ -200,7 +242,7 @@ class ReplaceWidget(Static, can_focus=True):
         Args:
             glyph (Glyph): The glyph to edit.
             search_pattern (SearchPattern): The search pattern to match.
-            replace_pattern (ReplacePattern): The replace pattern to apply.
+            replace_pattern (ReplacePattern): The replacement pattern to apply.
         """
         super().__init__()
         self.glyph = glyph
@@ -209,61 +251,51 @@ class ReplaceWidget(Static, can_focus=True):
         self.matches = self.glyph.find_matches(search_pattern)
 
     def on_mount(self) -> None:
-        """Actions that are executed when the widget is mounted."""
+        """Render the glyph and request focus."""
         self.render_glyph()
         self.focus()
 
     def watch_match_index(self) -> None:
-        """Watch for changes to the `match_index` attribute."""
+        """Re-render when the selected match index changes."""
         self.render_glyph()
 
     def render_glyph(self) -> None:
-        """Render the glyph with the current cursor position."""
-
-        def get_color(i: int) -> str:
-            """Get color based on index."""
-            return "auto" if i % 2 == 0 else ("green" if i > 9 else "red")
-
-        def get_pixel_color(value: int) -> str:
-            dark_theme = is_app_dark(self.app)
-            if value == 1:
-                return "white" if dark_theme else "black"
-            return "black" if dark_theme else "white"
-
-        def get_block_style(i: int, j: int, current_match: tuple[int, int]) -> str:
-            width = self.glyph.width
-            h = self.replace_pattern.height
-            w = self.replace_pattern.width
-            x, y = current_match
-
-            if current_match and x <= i < x + h and y <= j < y + w:
-                pixel = self.replace_pattern.data[(i - x) * w + (j - y)]
-                pixel_color = get_pixel_color(pixel)
-                if pixel == 1:
-                    return "green on green"
-                return f"{pixel_color} on {pixel_color}"
-            pixel_color = get_pixel_color(self.glyph.data[i * width + j])
-            return f"{pixel_color} on {pixel_color}"
-
-        def get_nums(i: int) -> str:
-            """Get the hexadecimal representation of index."""
-            return hex(i)[2:].rjust(2).upper()
-
+        """Render glyph with match highlights and replacement preview."""
+        dark_theme = is_app_dark(self.app)
         width = self.glyph.width
         glyph = Text("\n  ")
-        # Columns
-        for i in range(width):
-            glyph.append(get_nums(i), style=f"{get_color(i)} bold")
+
+        for col in range(width):
+            glyph.append(_hex_index(col), style=f"{_color_by_index(col)} bold")
         glyph.append("\n")
 
-        current_match = self.matches[self.match_index]
+        current_match = self.matches[self.match_index] if self.matches else None
+        repl_height = self.replace_pattern.height
+        repl_width = self.replace_pattern.width
 
-        for i in range(16):
-            # Rows
-            glyph.append(f"{get_nums(i)} ", style=f"{get_color(i)} bold")
-            for j in range(width):
-                block_style = get_block_style(i, j, current_match)
-                glyph.append("  ", style=block_style)
+        for row in range(16):
+            glyph.append(f"{_hex_index(row)} ", style=f"{_color_by_index(row)} bold")
+            for col in range(width):
+                pixel_color = _pixel_color(self.glyph.data[row * width + col], dark_theme)
+
+                if current_match:
+                    start_row, start_col = current_match
+                    within_match = (
+                        start_row <= row < start_row + repl_height
+                        and start_col <= col < start_col + repl_width
+                    )
+                    if within_match:
+                        repl_value = self.replace_pattern.data[
+                            (row - start_row) * repl_width + (col - start_col)
+                        ]
+                        repl_color = _pixel_color(repl_value, dark_theme)
+                        if repl_value:
+                            glyph.append("  ", style="green on green")
+                            continue
+                        glyph.append("  ", style=f"{repl_color} on {repl_color}")
+                        continue
+
+                glyph.append("  ", style=f"{pixel_color} on {pixel_color}")
             glyph.append("\n")
 
         match_index_text = Text(
@@ -291,7 +323,7 @@ class ReplaceWidget(Static, can_focus=True):
             self.match_index = (self.match_index + 1) % len(self.matches)
 
     def action_apply(self) -> None:
-        """Apply the replacement to the glyph at the current match."""
+        """Apply replacement at the selected match and refresh matches."""
         if self.matches:
             match_pos = self.matches[self.match_index]
             self.glyph.apply_pattern(match_pos[0], match_pos[1], self.replace_pattern)
@@ -304,7 +336,7 @@ class ReplaceWidget(Static, can_focus=True):
 
 
 class GlyphEditor(App):
-    """Main application for editing a glyph."""
+    """Textual app that hosts an `EditWidget` for editing one glyph."""
 
     glyph: Glyph
     CSS_PATH = "editor.tcss"
@@ -312,23 +344,27 @@ class GlyphEditor(App):
     BINDINGS = [("ctrl+d", "toggle_dark", "Toggle Dark Mode")]
 
     def __init__(self, glyph: Glyph) -> None:
-        """Create a new GlyphEditor.
+        """Initialize the editor application.
 
         Args:
-            glyph (Glyph): The glyph to edit.
+            glyph (Glyph): The glyph instance to be edited by the app.
         """
         super().__init__()
         self.glyph = glyph
         self.edit_widget = None
 
     def action_toggle_dark(self) -> None:
-        """An action to toggle dark mode."""
+        """Toggle the theme and refresh the edit widget if mounted."""
         self.theme = "textual-light" if is_app_dark(self) else "textual-dark"
         if self.edit_widget:
             self.edit_widget.render_glyph()
 
     def compose(self) -> ComposeResult:
-        """Create child widgets for the app."""
+        """Compose and yield child widgets for the application UI.
+
+        Yields a `Header`, `Footer`, and an `EditWidget` bound to the app's
+        glyph.
+        """
         yield Header()
         yield Footer()
         self.edit_widget = EditWidget(self.glyph)
@@ -336,7 +372,7 @@ class GlyphEditor(App):
 
 
 class GlyphReplacer(App):
-    """Main application for replacing patterns in a glyph."""
+    """Textual app that hosts a `ReplaceWidget` for applying patterns."""
 
     glyph: Glyph
     CSS_PATH = "editor.tcss"
@@ -349,12 +385,12 @@ class GlyphReplacer(App):
         search_pattern: SearchPattern,
         replace_pattern: ReplacePattern,
     ) -> None:
-        """Create a new GlyphReplacer.
+        """Initialize the replacer application.
 
         Args:
-            glyph (Glyph): The glyph to edit.
-            search_pattern (SearchPattern): The search pattern to match.
-            replace_pattern (ReplacePattern): The replace pattern to apply.
+            glyph (Glyph): The glyph instance to search and modify.
+            search_pattern (SearchPattern): Pattern used to locate matches.
+            replace_pattern (ReplacePattern): Pattern used to replace matches.
         """
         super().__init__()
         self.glyph = glyph
@@ -363,13 +399,16 @@ class GlyphReplacer(App):
         self.replace_widget = None
 
     def action_toggle_dark(self) -> None:
-        """An action to toggle dark mode."""
+        """Toggle theme and refresh the replace widget if mounted."""
         self.theme = "textual-light" if is_app_dark(self) else "textual-dark"
         if self.replace_widget:
             self.replace_widget.render_glyph()
 
     def compose(self) -> ComposeResult:
-        """Create child widgets for the app."""
+        """Compose and yield the header/footer and the replace widget.
+
+        Yields a `Header`, `Footer`, and a `ReplaceWidget` instance.
+        """
         yield Header()
         yield Footer()
         self.replace_widget = ReplaceWidget(self.glyph, self.search_pattern, self.replace_pattern)

@@ -15,6 +15,23 @@ import requests
 from .base import FilePath, Validator
 
 
+def _extract_gzip(source: Path, destination: Path) -> None:
+    """Extract a gzip file to the destination path.
+
+    Args:
+        source: Path to the ``.gz`` archive.
+        destination: Output path for extracted content.
+
+    Raises:
+        RuntimeError: If extraction fails.
+    """
+    try:
+        with gzip.open(source, "rb") as gz_file, destination.open("wb") as out_file:
+            shutil.copyfileobj(gz_file, out_file)  # type: ignore
+    except OSError as exc:
+        raise RuntimeError(f"Failed to extract archive {source}: {exc}") from exc
+
+
 class UnifontDownloader:
     """Helper for downloading and extracting Unifont releases."""
 
@@ -202,7 +219,7 @@ class UnifontDownloader:
         tmp_path = Path(tmp_name)
         try:
             self._download_file(archive_url, tmp_path, progress_callback=progress_callback)
-            self._extract_gzip(tmp_path, output_path)
+            _extract_gzip(tmp_path, output_path)
         finally:
             tmp_path.unlink(missing_ok=True)
 
@@ -262,22 +279,6 @@ class UnifontDownloader:
         for chunk in chunks:
             if chunk:
                 yield chunk
-
-    def _extract_gzip(self, source: Path, destination: Path) -> None:
-        """Extract a gzip file to the destination path.
-
-        Args:
-            source: Path to the ``.gz`` archive.
-            destination: Output path for extracted content.
-
-        Raises:
-            RuntimeError: If extraction fails.
-        """
-        try:
-            with gzip.open(source, "rb") as gz_file, destination.open("wb") as out_file:
-                shutil.copyfileobj(gz_file, out_file)
-        except OSError as exc:
-            raise RuntimeError(f"Failed to extract archive {source}: {exc}") from exc
 
     def _fetch_text(self, url: str) -> str:
         """Fetch text content from a URL.

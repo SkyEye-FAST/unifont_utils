@@ -61,18 +61,17 @@ def print_diff(
     *,
     black_and_white: bool = True,
 ) -> None:
-    """Prints the differences between two glyphs.
+    """Print the differences between two glyphs to the console.
 
     Args:
         glyph_a (str | Glyph): The first glyph to compare.
         glyph_b (str | Glyph): The second glyph to compare.
-        black_and_white (bool, optional): Whether it is a black and white image.
+        black_and_white (bool, optional): Whether the images are black-and-white.
+            Defaults to ``True``. If ``True``, ``0`` is white and ``1`` is black.
+            If ``False``, ``0`` is transparent and ``1`` is white.
 
-            Defaults to `True`.
-
-            If `True`, `0` is white and `1` is black.
-
-            If `False`, `0` is transparent and `1` is white.
+    Returns:
+        None
     """
     diff_list = diff_glyphs(glyph_a, glyph_b)
     a, b = get_img_data(glyph_a), get_img_data(glyph_b)
@@ -86,15 +85,15 @@ def print_diff(
 
     width = len(a) // 16
 
-    def get_row(i: int, data: list[int]) -> Text:
+    def get_row(row_index: int, data: list[int]) -> Text:
         row_text = Text()
-        row_data = data[i * width : (i + 1) * width]
+        row_data = data[row_index * width : (row_index + 1) * width]
         for pixel in row_data:
             block_style = white_block if pixel else black_block
             row_text.append("  ", style=block_style)
         return row_text
 
-    def get_row_diff(i: int) -> Text:
+    def get_row_diff(row_index: int) -> Text:
         row_text = Text()
         row_diff = {
             "+": "green on green",
@@ -102,7 +101,7 @@ def print_diff(
             "1": white_block,
             "0": black_block,
         }
-        for element in diff_list[i * width : (i + 1) * width]:
+        for element in diff_list[row_index * width : (row_index + 1) * width]:
             block_style = row_diff.get(str(element), black_block)
             row_text.append("  ", style=block_style)
         return row_text

@@ -16,11 +16,9 @@ from .base import (
     CodePoint,
     CodePoints,
     FilePath,
+    Validator,
 )
-from .base import (
-    Validator as Validator,
-)
-from .converter import Converter as Converter
+from .converter import Converter
 
 COLOR_MAP = {
     "white": (255, 255, 255, 255),
@@ -40,8 +38,6 @@ class Pattern:
 
     Attributes:
         data (list[int]): The pattern data.
-        width (int): The width of the pattern.
-        height (Optional[int]): The height of the pattern.
 
     Raises:
         ValueError: If the size of the pattern is invalid.
@@ -224,6 +220,73 @@ class ColorScheme:
         return self._color_map
 
 
+def _validate_and_create_color_scheme(color_scheme: str | ColorScheme) -> ColorScheme:
+    """Validate input and return a `ColorScheme` instance.
+
+    Args:
+        color_scheme (str | ColorScheme): Scheme name or instance.
+
+    Returns:
+        ColorScheme: Validated or newly created color scheme.
+
+    Raises:
+        TypeError: If `color_scheme` is not a string or `ColorScheme`.
+    """
+    if isinstance(color_scheme, str):
+        return ColorScheme(color_scheme)
+    if isinstance(color_scheme, ColorScheme):
+        return color_scheme
+    raise TypeError("Invalid color scheme type. Must be a string or a ColorScheme.")
+
+
+def _pattern_matches(
+    pattern_data: list[int],
+    height: int,
+    width: int,
+    image_data: list[int],
+    image_width: int,
+    row: int,
+    col: int,
+) -> bool:
+    """Check whether a given binary pattern matches at (row, col) in image_data.
+
+    This helper consolidates the repeated matching logic used in `replace` and
+    `find_matches`.
+    """
+    for y in range(height):
+        for x in range(width):
+            if (
+                pattern_data[y * width + x] == 1
+                and image_data[(row + y) * image_width + (col + x)] != 1
+            ):
+                return False
+    return True
+
+
+def _apply_pattern_to_data(
+    pattern_b: list[int],
+    height: int,
+    width: int,
+    img_data: list[int],
+    image_width: int,
+    row: int,
+    col: int,
+) -> None:
+    """Apply a replacement pattern onto img_data at (row, col).
+
+    This consolidates the repeated application logic used in `replace` and
+    `apply_pattern`.
+    """
+    for y in range(height):
+        for x in range(width):
+            pixel = pattern_b[y * width + x]
+            index = (row + y) * image_width + (col + x)
+            if pixel == 1:
+                img_data[index] = 1
+            elif pixel == 0:
+                img_data[index] = 0
+
+
 @dataclass
 class Glyph:
     """A class representing a single glyph in Unifont."""
@@ -317,19 +380,22 @@ class Glyph:
     @color_scheme.setter
     def color_scheme(self, scheme: str | ColorScheme) -> None:
         """Set the color scheme of the glyph."""
-        self._color_scheme = self._validate_and_create_color_scheme(scheme)
-
-    def _validate_and_create_color_scheme(self, color_scheme: str | ColorScheme) -> ColorScheme:
-        """Helper function to validate and create a ColorScheme object."""
-        if isinstance(color_scheme, str):
-            return ColorScheme(color_scheme)
-        if isinstance(color_scheme, ColorScheme):
-            return color_scheme
-        raise TypeError("Invalid color scheme type. Must be a string or a ColorScheme.")
+        self._color_scheme = _validate_and_create_color_scheme(scheme)
 
     @staticmethod
-    def _auto_detect_color_scheme(width: int, rgba_values: list[tuple[int, int, int, int]]) -> str:
-        """Helper function to automatically detect the color scheme of the glyph."""
+    def auto_detect_color_scheme(width: int, rgba_values: list[tuple[int, int, int, int]]) -> str:
+        """Detect the color scheme used by RGBA pixel data.
+
+        Args:
+            width (int): Pixel width of the glyph (used to index background).
+            rgba_values (list[tuple[int,int,int,int]]): Flattened RGBA pixel list.
+
+        Returns:
+            str: Detected color scheme name.
+
+        Raises:
+            ValueError: If pixels contain unsupported or ambiguous colors.
+        """
         valid_rgba_values = {(0, 0, 0, 255), (255, 255, 255, 255), (0, 0, 0, 0)}
 
         if not all(pixel in valid_rgba_values for pixel in rgba_values):
@@ -404,17 +470,17 @@ class Glyph:
         resolved_color_scheme: ColorScheme | None = None
         if color_scheme is not None:
             color_auto_detect = False
-            resolved_color_scheme = self._validate_and_create_color_scheme(color_scheme)
+            resolved_color_scheme = _validate_and_create_color_scheme(color_scheme)
         img_path = Validator.file_path(img_path)
         if not img_path.is_file():
             raise FileNotFoundError(f"File not found: {img_path}")
 
         img = Img.open(img_path).convert("RGBA")
-        rgba_values = list(cast(Iterable[tuple[int, int, int, int]], img.getdata()))
+        rgba_values = list(cast(Iterable[tuple[int, int, int, int]], cast(object, img.getdata())))
         if color_auto_detect:
             try:
-                detected_scheme_name = self._auto_detect_color_scheme(img.size[0], rgba_values)
-                resolved_color_scheme = self._validate_and_create_color_scheme(detected_scheme_name)
+                detected_scheme_name = self.auto_detect_color_scheme(img.size[0], rgba_values)
+                resolved_color_scheme = _validate_and_create_color_scheme(detected_scheme_name)
             except ValueError as e:
                 print(f"Warning: {e}. The glyph will not be changed.")
                 return
@@ -496,7 +562,7 @@ class Glyph:
 
         img = Img.new("RGBA", (self.width, 16))
         color_scheme = (
-            self._validate_and_create_color_scheme(color_scheme)
+            _validate_and_create_color_scheme(color_scheme)
             if color_scheme is not None
             else self.color_scheme
         )
@@ -542,7 +608,7 @@ class Glyph:
         black_block = "black on black"
 
         color_scheme = (
-            self._validate_and_create_color_scheme(color_scheme)
+            _validate_and_create_color_scheme(color_scheme)
             if color_scheme is not None
             else self.color_scheme
         )
@@ -600,30 +666,10 @@ class Glyph:
         width = search_pattern.width
         image_width = len(img_data) // 16
 
-        def match_pattern(i: int, j: int) -> bool:
-            for y in range(height):
-                for x in range(width):
-                    if (
-                        pattern_a[y * width + x] == 1
-                        and img_data[(i + y) * image_width + (j + x)] != 1
-                    ):
-                        return False
-            return True
-
-        def apply_pattern(i: int, j: int) -> None:
-            for y in range(height):
-                for x in range(width):
-                    pixel = pattern_b[y * width + x]
-                    index = (i + y) * image_width + (j + x)
-                    if pixel == 1:
-                        img_data[index] = 1
-                    elif pixel == 0:
-                        img_data[index] = 0
-
         for i in range(16 - height + 1):
             for j in range(image_width - width + 1):
-                if match_pattern(i, j):
-                    apply_pattern(i, j)
+                if _pattern_matches(pattern_a, height, width, img_data, image_width, i, j):
+                    _apply_pattern_to_data(pattern_b, height, width, img_data, image_width, i, j)
 
         self.data = img_data
 
@@ -645,36 +691,26 @@ class Glyph:
         image_width = len(self.data) // 16
         matches = []
 
-        def match_pattern(i: int, j: int) -> bool:
-            for y in range(height):
-                for x in range(width):
-                    if (
-                        pattern_a[y * width + x] == 1
-                        and self.data[(i + y) * image_width + (j + x)] != 1
-                    ):
-                        return False
-            return True
-
         for i in range(16 - height + 1):
             for j in range(image_width - width + 1):
-                if match_pattern(i, j):
+                if _pattern_matches(pattern_a, height, width, self.data, image_width, i, j):
                     matches.extend([(i, j)])
 
         return matches
 
-    def apply_pattern(self, i: int, j: int, replace_pattern: ReplacePattern) -> None:
+    def apply_pattern(self, row: int, col: int, replace_pattern: ReplacePattern) -> None:
         """Apply the replacement pattern at the specified coordinates.
 
         Args:
-            i (int): The row coordinate where the pattern starts.
-            j (int): The column coordinate where the pattern starts.
+            row (int): The row coordinate where the pattern starts.
+            col (int): The column coordinate where the pattern starts.
             replace_pattern (ReplacePattern): The pattern to replace with.
         """
         if replace_pattern.width > self.width:
             raise ValueError("The pattern to be replaced is larger than the glyph.")
-        if i < 0 or i + replace_pattern.height > 16:
+        if row < 0 or row + replace_pattern.height > 16:
             raise ValueError("The pattern is out of bounds.")
-        if j < 0 or j + replace_pattern.width > self.width:
+        if col < 0 or col + replace_pattern.width > self.width:
             raise ValueError("The pattern is out of bounds.")
         img_data = self.data.copy()
         pattern_b = replace_pattern.data
@@ -683,16 +719,31 @@ class Glyph:
         width = replace_pattern.width
         image_width = len(img_data) // 16
 
-        for y in range(height):
-            for x in range(width):
-                pixel = pattern_b[y * width + x]
-                index = (i + y) * image_width + (j + x)
-                if pixel == 1:
-                    img_data[index] = 1
-                elif pixel == 0:
-                    img_data[index] = 0
+        _apply_pattern_to_data(pattern_b, height, width, img_data, image_width, row, col)
 
         self.data = img_data
+
+
+def _validate_and_create_glyph(glyph: Glyph | tuple[CodePoint, str]) -> Glyph:
+    """Validate input and return a `Glyph` instance.
+
+    Args:
+        glyph (Glyph | tuple[CodePoint, str]): Glyph instance or `(code_point, hex_str)` tuple.
+
+    Returns:
+        Glyph: Validated or newly created glyph.
+
+    Raises:
+        TypeError: If the input is neither a `Glyph` nor a valid tuple.
+    """
+    if isinstance(glyph, Glyph):
+        return glyph
+    if isinstance(glyph, tuple):
+        code_point, hex_str = glyph
+        code_point = Validator.code_point(code_point)
+        hex_str = Validator.hex_str(hex_str)
+        return Glyph.init_from_hex(code_point, hex_str)
+    raise TypeError("Invalid glyph type. Must be a Glyph or a tuple (code_point, hex_str).")
 
 
 @dataclass
@@ -804,7 +855,11 @@ class GlyphSet:
         return len(self._glyphs)
 
     def __iter__(self) -> Iterator[Glyph]:
-        """Iterate through the glyphs in the set."""
+        """Iterate through the glyphs in the set.
+
+        Returns:
+            Iterator[Glyph]: An iterator over the glyph objects in the set.
+        """
         return iter(self._glyphs.values())
 
     def __contains__(self, glyph: Glyph | str) -> bool:
@@ -821,12 +876,13 @@ class GlyphSet:
 
     @classmethod
     def init_glyphs(cls, code_points: CodePoints) -> "GlyphSet":
-        """Initialize a set of glyphs. All the code points will be initialized with empty data.
+        """Initialize a set of glyphs with empty data for each code point.
 
         Args:
-            code_points (CodePoints): The code points to initialize.
+            code_points (CodePoints): Iterable of code points (hex strings or ints).
 
-                The code points specified should be hexadecimal number strings or integers.
+        Returns:
+            GlyphSet: New glyph set containing initialized glyphs.
         """
         code_points_list = Validator.code_points(code_points)
         glyphs = {cp: Glyph.init_from_hex(cp, "") for cp in code_points_list}
@@ -881,7 +937,7 @@ class GlyphSet:
 
                 If a tuple is provided, it should be in the format of `(code_point, hex_str)`.
         """
-        glyph_obj = self._validate_and_create_glyph(glyph)
+        glyph_obj = _validate_and_create_glyph(glyph)
         if glyph_obj.code_point in self._glyphs:
             display_cp = Validator.code_point_display(glyph_obj.code_point)
             raise ValueError(f"Glyph with code point U+{display_cp} already exists.")
@@ -907,7 +963,7 @@ class GlyphSet:
 
                 If a tuple is provided, it should be in the format of `(code_point, hex_str)`.
         """
-        glyph_obj = self._validate_and_create_glyph(glyph)
+        glyph_obj = _validate_and_create_glyph(glyph)
         if glyph_obj.code_point not in self._glyphs:
             display_cp = Validator.code_point_display(glyph_obj.code_point)
             raise KeyError(f"Glyph with code point U+{display_cp} not found.")
@@ -918,17 +974,6 @@ class GlyphSet:
         if not self._glyphs:
             raise ValueError("Cannot sort an empty glyph set.")
         self._glyphs = dict(sorted(self._glyphs.items(), key=lambda x: int(x[0], 16)))
-
-    def _validate_and_create_glyph(self, glyph: Glyph | tuple[CodePoint, str]) -> Glyph:
-        """Helper function to validate and create a Glyph object."""
-        if isinstance(glyph, Glyph):
-            return glyph
-        if isinstance(glyph, tuple):
-            code_point, hex_str = glyph
-            code_point = Validator.code_point(code_point)
-            hex_str = Validator.hex_str(hex_str)
-            return Glyph.init_from_hex(code_point, hex_str)
-        raise TypeError("Invalid glyph type. Must be a Glyph or a tuple (code_point, hex_str).")
 
     @classmethod
     def load_hex_file(cls, file_path: FilePath) -> "GlyphSet":

@@ -48,10 +48,16 @@ class Validator:
 
     @staticmethod
     def code_point_display(code_point: CodePoint) -> str:
-        """Return a code point string formatted for display.
+        """Return a formatted code point string for display.
 
-        Pads to 4 digits when shorter, preserves 5-digit width (does not zero-pad to 6),
-        and keeps 6-digit values as-is. Always uppercase.
+        Pads to 4 digits when shorter, preserves 5-digit width (does not
+        zero-pad to 6), and keeps 6-digit values as-is. Always uppercase.
+
+        Args:
+            code_point (CodePoint): Input code point string or integer.
+
+        Returns:
+            str: Display-ready code point string.
         """
         normalized = Validator.code_point(code_point)
         if len(normalized) == 6 and normalized.startswith("0") and normalized[1] != "0":
@@ -60,16 +66,16 @@ class Validator:
 
     @staticmethod
     def code_points(code_points: CodePoints) -> list[str]:
-        """Validate acode point list and return its normalized form.
+        """Validate a sequence of code points and return normalized list.
 
         Args:
-            code_points (CodePoints): The code point string or tuple to validate.
+            code_points (CodePoints): Sequence or set of code points to validate.
 
         Returns:
-            list[int]: The normalized code point list if valid.
+            list[str]: Normalized list of code point strings.
 
         Raises:
-            TypeError: If the code points are not a list, a set, or a `range` object.
+            TypeError: If the code points are not a sequence or set.
             ValueError: If the code points are invalid.
         """
         if not isinstance(code_points, (Sequence, set)):

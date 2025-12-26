@@ -15,7 +15,14 @@ from .page_converter import image_to_hex_page, save_page_image
 
 
 def output_path(font_path: str) -> str:
-    """Return the default output path for the edited font."""
+    """Return the default output path for an edited font file.
+
+    Args:
+        font_path (str): Original .hex font file path.
+
+    Returns:
+        str: Suggested output path with "_edited" suffix.
+    """
     return font_path.replace(".hex", "_edited.hex")
 
 
@@ -51,7 +58,7 @@ def edit():
     show_default=True,
     help="Overwrite the original .hex file when no --output is given.",
 )
-def hexfile(font_path, code_point, output, overwrite):
+def hex_file(font_path, code_point, output, overwrite):
     """Edit a code point in the Unifont .hex file."""
     click.echo(f"Editing Unifont .hex file: {font_path}")
     display_cp = Validator.code_point_display(code_point)
@@ -76,13 +83,13 @@ def hexfile(font_path, code_point, output, overwrite):
     type=str,
     help="The .hex format string to edit.",
 )
-def hexstr(code_point, hex_str):
+def hex_str(code_point, hex_string):
     """Edit a single Unifont .hex format string."""
     display_cp = Validator.code_point_display(code_point)
     click.echo(f"Editing code point: {display_cp}")
 
-    click.echo(f"Editing .hex format string: {hex_str}")
-    glyph = Glyph.init_from_hex(code_point, hex_str)
+    click.echo(f"Editing .hex format string: {hex_string}")
+    glyph = Glyph.init_from_hex(code_point, hex_string)
     GlyphEditor(glyph).run()
 
     click.echo(f"\nResult: {glyph.hex_str}\n")
@@ -110,7 +117,17 @@ def hex_group():
 
 
 def _resolve_output(font_path: str, output: str | None, overwrite: bool) -> str:
-    """Resolve the target output path based on user intent."""
+    """Resolve the final output path based on parameters.
+
+    Args:
+        font_path (str): Source font path.
+        output (str | None): Explicit output path or ``None``.
+        overwrite (bool): Whether to overwrite the original file when no
+            explicit output is provided.
+
+    Returns:
+        str: Resolved output file path.
+    """
     return output if output else (font_path if overwrite else output_path(font_path))
 
 
@@ -144,12 +161,12 @@ def _resolve_output(font_path: str, output: str | None, overwrite: bool) -> str:
     show_default=True,
     help="Overwrite the original .hex file when no --output is given.",
 )
-def hex_add(font_path, code_point, hex_str, output, overwrite):
+def hex_add(font_path, code_point, hex_string, output, overwrite):
     """Add a new code point entry to a .hex file."""
     target = _resolve_output(font_path, output, overwrite)
     glyphs = GlyphSet.load_hex_file(font_path)
     try:
-        glyphs.add_glyph((code_point, hex_str))
+        glyphs.add_glyph((code_point, hex_string))
     except Exception as exc:  # pragma: no cover - delegated to Click for UX
         raise click.ClickException(str(exc)) from exc
 
@@ -195,12 +212,12 @@ def hex_add(font_path, code_point, hex_str, output, overwrite):
     show_default=True,
     help="Overwrite the original .hex file when no --output is given.",
 )
-def hex_replace(font_path, code_point, hex_str, output, overwrite):
+def hex_replace(font_path, code_point, hex_string, output, overwrite):
     """Replace an existing code point entry in a .hex file."""
     target = _resolve_output(font_path, output, overwrite)
     glyphs = GlyphSet.load_hex_file(font_path)
     try:
-        glyphs.update_glyph((code_point, hex_str))
+        glyphs.update_glyph((code_point, hex_string))
     except Exception as exc:  # pragma: no cover - delegated to Click for UX
         raise click.ClickException(str(exc)) from exc
 
@@ -358,9 +375,9 @@ def single():
     type=str,
     help="The color scheme for the output image.",
 )
-def single_hex2img(hex_str, output, img_format, color_scheme):
+def single_hex2img(hex_string, output, img_format, color_scheme):
     """Convert a .hex format string to an image."""
-    Glyph.init_from_hex(0, hex_str).save_img(
+    Glyph.init_from_hex(0, hex_string).save_img(
         output, img_format=img_format, color_scheme=color_scheme
     )
     click.echo(f"Output saved to: {output}")
@@ -442,13 +459,13 @@ def page():
     type=str,
     help="The color scheme for the output image.",
 )
-def page_hex2img(font_path, page, output, img_format, color_scheme):
+def page_hex2img(font_path, glyph_page, output, img_format, color_scheme):
     """Convert a .hex file page to an image."""
     glyphs = GlyphSet.load_hex_file(font_path)
     try:
         save_page_image(
             glyphs,
-            page,
+            glyph_page,
             output,
             color_scheme=color_scheme,
             img_format=img_format,
@@ -456,7 +473,9 @@ def page_hex2img(font_path, page, output, img_format, color_scheme):
     except Exception as exc:  # pragma: no cover - delegated to Click for UX
         raise click.ClickException(str(exc)) from exc
 
-    page_display = f"0x{int(page, 16):X}" if isinstance(page, str) else f"0x{int(page):X}"
+    page_display = (
+        f"0x{int(glyph_page, 16):X}" if isinstance(glyph_page, str) else f"0x{int(glyph_page):X}"
+    )
     click.echo(f"Saved page {page_display} to: {output}")
 
 
@@ -495,7 +514,7 @@ def page_hex2img(font_path, page, output, img_format, color_scheme):
     type=str,
     help="Manually specify the color scheme when auto detection is disabled.",
 )
-def page_img2hex(img_path, page, output, auto_detect, color_scheme):
+def page_img2hex(img_path, glyph_page, output, auto_detect, color_scheme):
     """Convert a page image to a .hex file containing 256 code points."""
     if not auto_detect and color_scheme is None:
         raise click.ClickException("Specify --color_scheme when --no-auto_detect is used.")
@@ -503,7 +522,7 @@ def page_img2hex(img_path, page, output, auto_detect, color_scheme):
     try:
         glyphs = image_to_hex_page(
             img_path,
-            page,
+            glyph_page,
             color_auto_detect=auto_detect,
             color_scheme=color_scheme,
         )
@@ -547,7 +566,7 @@ def page_img2hex(img_path, page, output, auto_detect, color_scheme):
     help="Network timeout in seconds for downloading.",
 )
 def download(version, variant, output, force, timeout):
-    """Download and extract a Unifont .hex release."""
+    """Download and extract Unifont .hex releases."""
     downloader = UnifontDownloader(timeout=timeout)
 
     try:
@@ -560,7 +579,7 @@ def download(version, variant, output, force, timeout):
                     bar.show_eta = True
                 bar.update(downloaded - bar.pos)
 
-            output_path, resolved_version = downloader.download_hex(
+            downloaded_file_path, resolved_version = downloader.download_hex(
                 version=version,
                 variant=variant,
                 output=output,
@@ -570,7 +589,7 @@ def download(version, variant, output, force, timeout):
     except Exception as exc:  # pragma: no cover - delegated to Click for UX
         raise click.ClickException(str(exc)) from exc
 
-    click.echo(f"Downloaded Unifont {resolved_version} to: {output_path}")
+    click.echo(f"Downloaded Unifont {resolved_version} to: {downloaded_file_path}")
 
 
 @cli.command()

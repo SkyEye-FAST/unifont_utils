@@ -121,7 +121,6 @@ def _hex2bit_bytes(instring: str) -> list[list[int]]:
     """
     character = [[0, 0, 0, 0] for _ in range(32)]
     data = instring.strip()
-    width = 0
     if len(data) <= 34:
         width = 0
     elif len(data) <= 66:
@@ -352,7 +351,7 @@ def image_to_hex_page(
         img_path: Path to a 576x544 RGBA image following ``unihex2bmp`` layout.
         page: Page identifier as integer or hexadecimal string.
         color_auto_detect: Whether to infer the color scheme from the image.
-        color_scheme: Explicit color scheme when auto detection is disabled.
+        color_scheme: Explicit color scheme when auto-detection is disabled.
         skip_blank: If ``True``, exclude glyphs that are entirely blank.
 
     Returns:
@@ -361,8 +360,8 @@ def image_to_hex_page(
 
     Raises:
         FileNotFoundError: If the input image does not exist.
-        ValueError: If dimensions are invalid, the scheme is missing when auto
-            detection is disabled, or pixel colors do not match the scheme.
+        ValueError: If dimensions are invalid, the scheme is missing when
+            auto-detection is disabled, or pixel colors do not match the scheme.
     """
     page_int = _normalize_page(page)
     resolved_path = Validator.file_path(img_path)
@@ -376,9 +375,9 @@ def image_to_hex_page(
     if image.size != (UNIHEX_WIDTH, UNIHEX_HEIGHT):
         raise ValueError("Image dimensions must be 576x544 to match unihex2bmp output.")
 
-    rgba_values = list(cast(Iterable[tuple[int, int, int, int]], image.getdata()))
+    rgba_values = list(cast(Iterable[tuple[int, int, int, int]], image.getdata()))  # type: ignore
     if color_auto_detect:
-        detected_name = Glyph._auto_detect_color_scheme(image.size[0], rgba_values)
+        detected_name = Glyph.auto_detect_color_scheme(image.size[0], rgba_values)
         scheme = ColorScheme(detected_name)
     else:
         scheme = (
