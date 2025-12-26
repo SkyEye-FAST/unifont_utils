@@ -12,3 +12,4 @@ from .diff import diff_glyphs, print_diff
 from .downloader import UnifontDownloader
 from .editor import GlyphEditor, GlyphReplacer
 from .glyphs import Glyph, GlyphSet, ReplacePattern, SearchPattern
+from .page_converter import hex_page_to_image, image_to_hex_page, save_page_image

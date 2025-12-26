@@ -11,6 +11,7 @@ from .base import Validator
 from .downloader import UnifontDownloader
 from .editor import GlyphEditor
 from .glyphs import Glyph, GlyphSet
+from .page_converter import image_to_hex_page, save_page_image
 
 
 def output_path(font_path: str) -> str:
@@ -320,7 +321,12 @@ def convert():
     """Convert between Unifont formats."""
 
 
-@convert.command()
+@convert.group()
+def single():
+    """Convert a single glyph between .hex and image."""
+
+
+@single.command(name="hex2img")
 @click.option(
     "--str",
     "--hex_str",
@@ -352,15 +358,15 @@ def convert():
     type=str,
     help="The color scheme for the output image.",
 )
-def hex2img(hex_str, output, img_format, color_scheme):
-    """Convert a .hex format string to a image."""
+def single_hex2img(hex_str, output, img_format, color_scheme):
+    """Convert a .hex format string to an image."""
     Glyph.init_from_hex(0, hex_str).save_img(
         output, img_format=img_format, color_scheme=color_scheme
     )
     click.echo(f"Output saved to: {output}")
 
 
-@convert.command()
+@single.command(name="img2hex")
 @click.option(
     "--img_path",
     "--path",
@@ -384,13 +390,128 @@ def hex2img(hex_str, output, img_format, color_scheme):
     type=str,
     help="The color scheme for the output image.",
 )
-def img2hex(img_path, auto_detect, color_scheme):
-    """Convert a image to a .hex format string."""
+def single_img2hex(img_path, auto_detect, color_scheme):
+    """Convert an image to a .hex format string."""
     click.echo(f"Loading image: {img_path}\n")
     glyph = Glyph.init_from_img(
         0, img_path, color_auto_detect=auto_detect, color_scheme=color_scheme
     )
     click.echo(f"Result: {glyph.hex_str}")
+
+
+@convert.group()
+def page():
+    """Convert an entire 256-code-point page between .hex and image."""
+
+
+@page.command(name="hex2img")
+@click.option(
+    "--font_path",
+    "--path",
+    "-p",
+    required=True,
+    type=click.Path(exists=True),
+    help="The path to the Unifont .hex file containing the page.",
+)
+@click.option(
+    "--page",
+    "-g",
+    required=True,
+    type=str,
+    help="The hex page value (e.g., 00, 83).",
+)
+@click.option(
+    "--output",
+    "-o",
+    required=True,
+    type=click.Path(),
+    help="The output image path.",
+)
+@click.option(
+    "--img_format",
+    "--format",
+    "-f",
+    default=None,
+    type=str,
+    help="The output image format. Defaults to deriving from file suffix.",
+)
+@click.option(
+    "-c",
+    "--color_scheme",
+    default="black_and_white",
+    type=str,
+    help="The color scheme for the output image.",
+)
+def page_hex2img(font_path, page, output, img_format, color_scheme):
+    """Convert a .hex file page to an image."""
+    glyphs = GlyphSet.load_hex_file(font_path)
+    try:
+        save_page_image(
+            glyphs,
+            page,
+            output,
+            color_scheme=color_scheme,
+            img_format=img_format,
+        )
+    except Exception as exc:  # pragma: no cover - delegated to Click for UX
+        raise click.ClickException(str(exc)) from exc
+
+    page_display = f"0x{int(page, 16):X}" if isinstance(page, str) else f"0x{int(page):X}"
+    click.echo(f"Saved page {page_display} to: {output}")
+
+
+@page.command(name="img2hex")
+@click.option(
+    "--img_path",
+    "--path",
+    "-p",
+    required=True,
+    type=click.Path(exists=True),
+    help="The path to the input page image.",
+)
+@click.option(
+    "--page",
+    "-g",
+    required=True,
+    type=str,
+    help="The hex page value the image represents (e.g., 00, 83).",
+)
+@click.option(
+    "--output",
+    "-o",
+    required=True,
+    type=click.Path(),
+    help="The output .hex file path.",
+)
+@click.option(
+    "--auto_detect/--no-auto_detect",
+    default=True,
+    show_default=True,
+    help="Automatically detect the color scheme from each glyph cell.",
+)
+@click.option(
+    "--color_scheme",
+    "-c",
+    type=str,
+    help="Manually specify the color scheme when auto detection is disabled.",
+)
+def page_img2hex(img_path, page, output, auto_detect, color_scheme):
+    """Convert a page image to a .hex file containing 256 code points."""
+    if not auto_detect and color_scheme is None:
+        raise click.ClickException("Specify --color_scheme when --no-auto_detect is used.")
+
+    try:
+        glyphs = image_to_hex_page(
+            img_path,
+            page,
+            color_auto_detect=auto_detect,
+            color_scheme=color_scheme,
+        )
+    except Exception as exc:  # pragma: no cover - delegated to Click for UX
+        raise click.ClickException(str(exc)) from exc
+
+    glyphs.save_hex_file(output)
+    click.echo(f"Extracted {len(glyphs)} glyphs from {img_path} to: {output}")
 
 
 @cli.command()
