@@ -1,6 +1,6 @@
 [project]
 name = "unifont_utils"
-version = "0.6.1"
+version = "0.6.2"
 description = "Unifont Utilities, but rewritten in Python."
 authors = [{ name = "SkyEye_FAST", email = "skyeyefast@foxmail.com" }]
 requires-python = ">=3.10,<4.0"
