@@ -433,6 +433,7 @@ def page():
 @click.option(
     "--page",
     "-g",
+    "glyph_page",
     required=True,
     type=str,
     help="The hex page value (e.g., 00, 83).",
@@ -491,6 +492,7 @@ def page_hex2img(font_path, glyph_page, output, img_format, color_scheme):
 @click.option(
     "--page",
     "-g",
+    "glyph_page",
     required=True,
     type=str,
     help="The hex page value the image represents (e.g., 00, 83).",
