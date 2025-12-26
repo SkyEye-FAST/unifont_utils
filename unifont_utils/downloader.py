@@ -32,15 +32,29 @@ class UnifontDownloader:
     )
 
     def __init__(self, timeout: int = 30) -> None:
-        """Initialize the downloader with an optional request timeout."""
+        """Initialize the downloader.
+
+        Args:
+            timeout: HTTP request timeout in seconds.
+        """
         self.timeout = timeout
 
     @classmethod
     def normalize_version(cls, version: str | int) -> str:
         """Normalize and validate a Unifont version string.
 
-        Accepts versions like ``17.0.03`` or ``v17.0.03`` and enforces a minimum
-        major version of ``7``.
+        Accepts versions like ``17.0.03`` or ``v17.0.03`` and enforces a
+        minimum major version of ``7``.
+
+        Args:
+            version: Version string or integer (with optional leading ``v``).
+
+        Returns:
+            Canonical version string in ``<major>.<minor>.<patch>`` form.
+
+        Raises:
+            ValueError: If the format is invalid or the major version is too
+                low.
         """
         version_str = str(version).strip()
         if version_str.startswith(("v", "V")):
@@ -56,7 +70,17 @@ class UnifontDownloader:
 
     @classmethod
     def normalize_variant(cls, variant: str | None) -> str:
-        """Validate and normalize the requested font build variant."""
+        """Validate and normalize the requested font build variant.
+
+        Args:
+            variant: Variant name; defaults to ``unifont_all`` when ``None``.
+
+        Returns:
+            Lowercase variant name.
+
+        Raises:
+            ValueError: If the variant is not allowed.
+        """
         normalized = (variant or cls.DEFAULT_VARIANT).strip().lower()
         if normalized not in cls.ALLOWED_VARIANTS:
             allowed = ", ".join(cls.ALLOWED_VARIANTS)
@@ -65,7 +89,17 @@ class UnifontDownloader:
 
     @staticmethod
     def _version_key(version: str) -> tuple[int, int, int]:
-        """Return a sortable tuple for a version string."""
+        """Return a sortable tuple for a version string.
+
+        Args:
+            version: Version string in ``<major>.<minor>.<patch>`` form.
+
+        Returns:
+            Tuple of integers ``(major, minor, patch)``.
+
+        Raises:
+            ValueError: If the string cannot be parsed.
+        """
         try:
             major, minor, patch = (int(part) for part in version.split("."))
         except ValueError as exc:  # pragma: no cover - defensive guard
@@ -74,7 +108,14 @@ class UnifontDownloader:
 
     @classmethod
     def parse_versions(cls, content: str) -> list[str]:
-        """Parse available versions from an index page."""
+        """Parse available versions from an index page.
+
+        Args:
+            content: HTML/text content of the index page.
+
+        Returns:
+            Sorted list of version strings meeting the minimum major version.
+        """
         versions: set[str] = set()
         for match in re.findall(r"unifont-((?:\d+\.){2}\d+)/", content):
             parts = match.split(".")
@@ -85,7 +126,15 @@ class UnifontDownloader:
         return sorted(versions, key=cls._version_key)
 
     def latest_version(self) -> str:
-        """Return the latest available Unifont version (>=7.x)."""
+        """Return the latest available Unifont version (>=7.x).
+
+        Returns:
+            Latest version string.
+
+        Raises:
+            RuntimeError: If the index page cannot be parsed or yields no
+                versions.
+        """
         content = self._fetch_text(self.BASE_URL)
         versions = self.parse_versions(content)
         if not versions:
@@ -93,7 +142,15 @@ class UnifontDownloader:
         return versions[-1]
 
     def build_download_url(self, version: str, *, variant: str | None = None) -> str:
-        """Build the download URL for the given version and variant."""
+        """Build the download URL for the given version and variant.
+
+        Args:
+            version: Unifont version string.
+            variant: Optional build variant name.
+
+        Returns:
+            URL to the ``.hex.gz`` archive.
+        """
         normalized_version = self.normalize_version(version)
         normalized_variant = self.normalize_variant(variant)
         filename = f"{normalized_variant}-{normalized_version}.hex.gz"
@@ -108,9 +165,23 @@ class UnifontDownloader:
         variant: str | None = None,
         progress_callback: Callable[[int, int | None], None] | None = None,
     ) -> tuple[Path, str]:
-        """Download and extract a Unifont `.hex` file.
+        """Download and extract a Unifont ``.hex`` file.
 
-        Returns the destination path and resolved version string.
+        Args:
+            version: Requested version; defaults to the latest when ``None``.
+            output: Destination file path; defaults to ``<variant>-<version>.hex``.
+            force: Whether to overwrite an existing destination file.
+            variant: Unifont build variant.
+            progress_callback: Optional callback receiving ``downloaded`` bytes
+                and total size (or ``None`` when unknown).
+
+        Returns:
+            Tuple of ``(output_path, resolved_version)``.
+
+        Raises:
+            FileExistsError: If the destination exists and ``force`` is ``False``.
+            RuntimeError: On download or extraction failures.
+            ValueError: On invalid version or variant input.
         """
         target_version = self.normalize_version(version) if version else self.latest_version()
         target_variant = self.normalize_variant(variant)
@@ -144,7 +215,16 @@ class UnifontDownloader:
         *,
         progress_callback: Callable[[int, int | None], None] | None = None,
     ) -> None:
-        """Download a file to the destination path."""
+        """Download a file to the destination path.
+
+        Args:
+            url: Source URL.
+            destination: Local path to write.
+            progress_callback: Optional callback for progress updates.
+
+        Raises:
+            RuntimeError: If the request fails.
+        """
         headers = {
             "User-Agent": "unifont-utils/0.6 (+https://github.com/SkyEye-FAST/unifont_utils)",
         }
@@ -171,13 +251,28 @@ class UnifontDownloader:
 
     @staticmethod
     def _iter_chunks(chunks: Iterable[bytes]) -> Iterable[bytes]:
-        """Yield non-empty chunks from a streaming response."""
+        """Yield non-empty chunks from a streaming response.
+
+        Args:
+            chunks: Iterable of raw byte chunks.
+
+        Returns:
+            Iterator over non-empty chunks.
+        """
         for chunk in chunks:
             if chunk:
                 yield chunk
 
     def _extract_gzip(self, source: Path, destination: Path) -> None:
-        """Extract a gzip file to the destination path."""
+        """Extract a gzip file to the destination path.
+
+        Args:
+            source: Path to the ``.gz`` archive.
+            destination: Output path for extracted content.
+
+        Raises:
+            RuntimeError: If extraction fails.
+        """
         try:
             with gzip.open(source, "rb") as gz_file, destination.open("wb") as out_file:
                 shutil.copyfileobj(gz_file, out_file)
@@ -185,7 +280,17 @@ class UnifontDownloader:
             raise RuntimeError(f"Failed to extract archive {source}: {exc}") from exc
 
     def _fetch_text(self, url: str) -> str:
-        """Fetch text content from a URL."""
+        """Fetch text content from a URL.
+
+        Args:
+            url: Target URL.
+
+        Returns:
+            Response body as text.
+
+        Raises:
+            RuntimeError: If the request fails.
+        """
         try:
             response = requests.get(
                 url,

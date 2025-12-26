@@ -37,7 +37,19 @@ UNIHEX_HEIGHT = 17 * 32  # 544
 
 
 def _normalize_page(page: int | str) -> int:
-    """Normalize a page identifier to an integer block index."""
+    """Normalize a page identifier to a numeric block index.
+
+    Args:
+        page: Page number as an integer or hexadecimal string (e.g. ``0x84`` or
+            ``"84"``).
+
+    Returns:
+        The normalized page number as an integer.
+
+    Raises:
+        ValueError: If the page is outside the allowed range ``0x0`` to
+            ``0x10FF``.
+    """
     page_int = int(page, 16) if isinstance(page, str) else int(page)
     if page_int < 0 or page_int > (0x10FFFF >> 8):
         raise ValueError("The page value must be between 0x0 and 0x10FF.")
@@ -45,7 +57,16 @@ def _normalize_page(page: int | str) -> int:
 
 
 def _resolve_image_format(output_path: Path, img_format: str | None) -> str:
-    """Resolve the Pillow image format from explicit input or file suffix."""
+    """Resolve the Pillow image format.
+
+    Args:
+        output_path: Destination path whose suffix can imply the format.
+        img_format: Explicit Pillow format name (e.g. ``"PNG"``). If provided,
+            overrides the suffix.
+
+    Returns:
+        Uppercase Pillow format string.
+    """
     if img_format:
         return img_format.upper()
     if suffix := output_path.suffix:
@@ -54,7 +75,17 @@ def _resolve_image_format(output_path: Path, img_format: str | None) -> str:
 
 
 def _background_rgba(scheme: ColorScheme) -> tuple[int, int, int, int]:
-    """Get the RGBA value used for background pixels in a color scheme."""
+    """Return the background RGBA value for a color scheme.
+
+    Args:
+        scheme: Color scheme describing logical color mappings.
+
+    Returns:
+        RGBA tuple corresponding to the background (value ``0``).
+
+    Raises:
+        ValueError: If the scheme does not map any color to ``0``.
+    """
     for name, value in scheme.color_map.items():
         if value == 0:
             return COLOR_MAP[name]
@@ -62,7 +93,17 @@ def _background_rgba(scheme: ColorScheme) -> tuple[int, int, int, int]:
 
 
 def _foreground_rgba(scheme: ColorScheme) -> tuple[int, int, int, int]:
-    """Get the RGBA value used for foreground pixels in a color scheme."""
+    """Return the foreground RGBA value for a color scheme.
+
+    Args:
+        scheme: Color scheme describing logical color mappings.
+
+    Returns:
+        RGBA tuple corresponding to the foreground (value ``1``).
+
+    Raises:
+        ValueError: If the scheme does not map any color to ``1``.
+    """
     for name, value in scheme.color_map.items():
         if value == 1:
             return COLOR_MAP[name]
@@ -70,7 +111,14 @@ def _foreground_rgba(scheme: ColorScheme) -> tuple[int, int, int, int]:
 
 
 def _hex2bit_bytes(instring: str) -> list[list[int]]:
-    """Convert the portion of a hex string after ':' into a 32x4 byte bitmap."""
+    """Convert the hex payload of a glyph into bytes.
+
+    Args:
+        instring: Glyph hex string without the code point prefix.
+
+    Returns:
+        A 32x4 matrix of bytes representing the glyph bitmap rows.
+    """
     character = [[0, 0, 0, 0] for _ in range(32)]
     data = instring.strip()
     width = 0
@@ -101,7 +149,11 @@ def _hex2bit_bytes(instring: str) -> list[list[int]]:
 
 
 def _build_hex_digit_bitmaps() -> list[list[int]]:
-    """Return inverted byte rows for the 18 hex digit glyphs used in headers."""
+    """Build inverted byte rows for the 18 header glyphs used in rendering.
+
+    Returns:
+        List of 18 glyphs, each with 32 bytes of inverted bitmap data.
+    """
     hexbits: list[list[int]] = [[0] * 32 for _ in range(18)]
     for idx, entry in enumerate(HEX_DIGIT_STRINGS):
         _, hex_part = entry.split(":", 1)
@@ -112,7 +164,16 @@ def _build_hex_digit_bitmaps() -> list[list[int]]:
 
 
 def _render_unihex2bmp_page(glyphs: GlyphSet, page: int | str, *, flip: bool = True) -> Img.Image:
-    """Render a page image matching unihex2bmp.c output (576x544 monochrome)."""
+    """Render a page image matching ``unihex2bmp.c`` output.
+
+    Args:
+        glyphs: Glyph set containing code points to render.
+        page: Page identifier as integer or hexadecimal string.
+        flip: Whether to mirror the column/row layout as in ``unihex2bmp``.
+
+    Returns:
+        Monochrome Pillow image sized ``576x544``.
+    """
     unipage = _normalize_page(page)
     bitmap: list[list[int]] = [[0xFF for _ in range(72)] for _ in range(UNIHEX_HEIGHT)]
     hexbits = _build_hex_digit_bitmaps()
@@ -217,7 +278,17 @@ def hex_page_to_image(
     *,
     color_scheme: str | ColorScheme = "black_and_white",
 ) -> Img.Image:
-    """Render a 256-code-point page."""
+    """Render a 256-code-point page to a Pillow image.
+
+    Args:
+        glyphs: Glyph set providing hex strings for code points.
+        page: Page identifier as integer or hexadecimal string.
+        color_scheme: Color scheme name or instance. ``"black_and_white"``
+            returns a single-channel mask; other schemes produce RGBA.
+
+    Returns:
+        Pillow image containing the rendered page.
+    """
     scheme = color_scheme if isinstance(color_scheme, ColorScheme) else ColorScheme(color_scheme)
     mask = _render_unihex2bmp_page(glyphs, page, flip=True)
 
@@ -241,7 +312,22 @@ def save_page_image(
     color_scheme: str | ColorScheme = "black_and_white",
     img_format: str | None = None,
 ) -> Path:
-    """Render and save a glyph page image."""
+    """Render and save a glyph page image.
+
+    Args:
+        glyphs: Glyph set providing hex strings for code points.
+        page: Page identifier as integer or hexadecimal string.
+        output: Destination file path.
+        color_scheme: Color scheme name or instance.
+        img_format: Optional Pillow format string (e.g. ``"PNG"``). Overrides
+            the suffix of ``output``.
+
+    Returns:
+        Path to the saved image file.
+
+    Raises:
+        ValueError: If saving fails for the chosen format.
+    """
     output_path = Validator.file_path(output)
     img = hex_page_to_image(glyphs, page, color_scheme=color_scheme)
     resolved_format = _resolve_image_format(output_path, img_format)
@@ -260,7 +346,24 @@ def image_to_hex_page(
     color_scheme: str | ColorScheme | None = None,
     skip_blank: bool = True,
 ) -> GlyphSet:
-    """Convert a page image into a GlyphSet representing 256 code points."""
+    """Convert a page image into glyph hex strings.
+
+    Args:
+        img_path: Path to a 576x544 RGBA image following ``unihex2bmp`` layout.
+        page: Page identifier as integer or hexadecimal string.
+        color_auto_detect: Whether to infer the color scheme from the image.
+        color_scheme: Explicit color scheme when auto detection is disabled.
+        skip_blank: If ``True``, exclude glyphs that are entirely blank.
+
+    Returns:
+        ``GlyphSet`` containing up to 256 code points reconstructed from the
+        image.
+
+    Raises:
+        FileNotFoundError: If the input image does not exist.
+        ValueError: If dimensions are invalid, the scheme is missing when auto
+            detection is disabled, or pixel colors do not match the scheme.
+    """
     page_int = _normalize_page(page)
     resolved_path = Validator.file_path(img_path)
     if not resolved_path.exists():
@@ -346,7 +449,18 @@ def image_to_hex_page(
 def _rgba_to_bits(
     rgba_values: Iterable[tuple[int, int, int, int]], scheme: ColorScheme
 ) -> list[int]:
-    """Convert RGBA pixels to binary glyph data according to a color scheme."""
+    """Convert RGBA pixels to binary glyph data for a color scheme.
+
+    Args:
+        rgba_values: Sequence of RGBA pixels from the page image.
+        scheme: Color scheme describing the foreground/background mapping.
+
+    Returns:
+        List of ``0``/``1`` bits ordered row-major across the page.
+
+    Raises:
+        ValueError: If any pixel is not represented in the scheme map.
+    """
     rgba_map = {COLOR_MAP[name]: value for name, value in scheme.color_map.items()}
     bits: list[int] = []
     for pixel in rgba_values:
