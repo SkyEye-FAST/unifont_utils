@@ -51,7 +51,7 @@ def _normalize_page(page: int | str) -> int:
             ``0x10FF``.
     """
     page_int = int(page, 16) if isinstance(page, str) else int(page)
-    if page_int < 0 or page_int > (0x10FFFF >> 8):
+    if not 0 <= page_int <= (0x10FFFF >> 8):
         raise ValueError("The page value must be between 0x0 and 0x10FF.")
     return page_int
 
@@ -67,11 +67,8 @@ def _resolve_image_format(output_path: Path, img_format: str | None) -> str:
     Returns:
         str: Uppercase Pillow format string.
     """
-    if img_format:
-        return img_format.upper()
-    if suffix := output_path.suffix:
-        return suffix.lstrip(".").upper()
-    return "PNG"
+    format_candidate = img_format or output_path.suffix.lstrip(".") or "PNG"
+    return format_candidate.upper()
 
 
 def _background_rgba(scheme: ColorScheme) -> tuple[int, int, int, int]:
@@ -86,10 +83,10 @@ def _background_rgba(scheme: ColorScheme) -> tuple[int, int, int, int]:
     Raises:
         ValueError: If the scheme does not map any color to ``0``.
     """
-    for name, value in scheme.color_map.items():
-        if value == 0:
-            return COLOR_MAP[name]
-    raise ValueError("Color scheme must map background to value 0.")
+    try:
+        return COLOR_MAP[next(name for name, value in scheme.color_map.items() if value == 0)]
+    except StopIteration as exc:
+        raise ValueError("Color scheme must map background to value 0.") from exc
 
 
 def _foreground_rgba(scheme: ColorScheme) -> tuple[int, int, int, int]:
@@ -104,10 +101,10 @@ def _foreground_rgba(scheme: ColorScheme) -> tuple[int, int, int, int]:
     Raises:
         ValueError: If the scheme does not map any color to ``1``.
     """
-    for name, value in scheme.color_map.items():
-        if value == 1:
-            return COLOR_MAP[name]
-    raise ValueError("Color scheme must map foreground to value 1.")
+    try:
+        return COLOR_MAP[next(name for name, value in scheme.color_map.items() if value == 1)]
+    except StopIteration as exc:
+        raise ValueError("Color scheme must map foreground to value 1.") from exc
 
 
 def _hex2bit_bytes(instring: str) -> list[list[int]]:
@@ -153,12 +150,11 @@ def _build_hex_digit_bitmaps() -> list[list[int]]:
     Returns:
         list[list[int]]: 18 glyphs, each with 32 bytes of inverted bitmap data.
     """
-    hexbits: list[list[int]] = [[0] * 32 for _ in range(18)]
-    for idx, entry in enumerate(HEX_DIGIT_STRINGS):
+    hexbits: list[list[int]] = []
+    for entry in HEX_DIGIT_STRINGS:
         _, hex_part = entry.split(":", 1)
         charbits = _hex2bit_bytes(hex_part)
-        for row in range(32):
-            hexbits[idx][row] = (~charbits[row][1]) & 0xFF
+        hexbits.append([(~charbits[row][1]) & 0xFF for row in range(32)])
     return hexbits
 
 
@@ -178,10 +174,7 @@ def _render_unihex2bmp_page(glyphs: GlyphSet, page: int | str, *, flip: bool = T
     hexbits = _build_hex_digit_bitmaps()
 
     # Display the page number as a 4-nybble value (e.g., 0x0084).
-    pnybble3 = (unipage >> 12) & 0xF
-    pnybble2 = (unipage >> 8) & 0xF
-    pnybble1 = (unipage >> 4) & 0xF
-    pnybble0 = unipage & 0xF
+    pnybble3, pnybble2, pnybble1, pnybble0 = ((unipage >> shift) & 0xF for shift in (12, 8, 4, 0))
     for i in range(32):
         bitmap[i][1] = hexbits[16][i]
         bitmap[i][2] = hexbits[17][i]
@@ -190,8 +183,7 @@ def _render_unihex2bmp_page(glyphs: GlyphSet, page: int | str, *, flip: bool = T
         bitmap[i][5] = hexbits[pnybble1][i]
         bitmap[i][6] = hexbits[pnybble0][i]
 
-    pnybble3 = (unipage >> 4) & 0xF
-    pnybble2 = unipage & 0xF
+    pnybble3, pnybble2 = ((unipage >> shift) & 0xF for shift in (4, 0))
     for i in range(16):
         for j in range(32):
             if flip:
@@ -232,21 +224,16 @@ def _render_unihex2bmp_page(glyphs: GlyphSet, page: int | str, *, flip: bool = T
 
     bitmap[31][7] = 0xFE
 
-    glyph_dict = getattr(glyphs, "_glyphs", {})
+    glyph_dict = glyphs.glyphs
     for offset in range(256):
-        code_point_value = (unipage << 8) + offset
-        code_point_str = Validator.code_point(code_point_value)
-        glyph = glyph_dict.get(code_point_str)
-        if glyph is None or not glyph.hex_str:
+        code_point_str = Validator.code_point((unipage << 8) + offset)
+        if (glyph := glyph_dict.get(code_point_str)) is None or not glyph.hex_str:
             continue
 
-        thischarbyte = offset & 0xFF
-        thiscol = (thischarbyte & 0xF) + 2
-        thischarrow = thischarbyte >> 4
         if flip:
-            thiscol, thischarrow = thischarrow, thiscol
-            thiscol += 2
-            thischarrow -= 2
+            thiscol, thischarrow = (offset >> 4) + 2, offset & 0xF
+        else:
+            thiscol, thischarrow = (offset & 0xF) + 2, offset >> 4
         toppixelrow = 32 * (thischarrow + 1) - 1
 
         charbits = _hex2bit_bytes(glyph.hex_str)
@@ -261,10 +248,12 @@ def _render_unihex2bmp_page(glyphs: GlyphSet, page: int | str, *, flip: bool = T
         bitmap[toppixelrow + 15][(thiscol << 2) | 3] |= 1
         bitmap[toppixelrow + 23][(thiscol << 2) | 3] |= 1
 
-    pixels: list[int] = []
-    for row in bitmap:
-        for byte in row:
-            pixels.extend(255 if byte & (1 << bit) else 0 for bit in range(7, -1, -1))
+    pixels = [
+        255 if byte & (1 << bit) else 0
+        for row in bitmap
+        for byte in row
+        for bit in range(7, -1, -1)
+    ]
 
     img = Img.new("L", (UNIHEX_WIDTH, UNIHEX_HEIGHT))
     img.putdata(pixels)
@@ -376,30 +365,26 @@ def image_to_hex_page(
         raise ValueError("Image dimensions must be 576x544 to match unihex2bmp output.")
 
     rgba_values = list(cast(Iterable[tuple[int, int, int, int]], image.getdata()))  # type: ignore
-    if color_auto_detect:
-        detected_name = Glyph.auto_detect_color_scheme(image.size[0], rgba_values)
-        scheme = ColorScheme(detected_name)
-    else:
-        scheme = (
+    scheme = (
+        ColorScheme(Glyph.auto_detect_color_scheme(image.size[0], rgba_values))
+        if color_auto_detect
+        else (
             color_scheme
             if isinstance(color_scheme, ColorScheme)
             else ColorScheme(color_scheme or "black_and_white")
         )
+    )
 
     bits = _rgba_to_bits(rgba_values, scheme)
-    background_value = 0
 
     # Reconstruct stored bitmap bytes from bits (background -> 1, foreground -> 0).
     bitmap: list[list[int]] = [[0 for _ in range(72)] for _ in range(UNIHEX_HEIGHT)]
     for y in range(UNIHEX_HEIGHT):
         row_base = y * UNIHEX_WIDTH
         for byte_idx in range(72):
-            value = 0
-            for bit in range(8):
-                bit_val = bits[row_base + byte_idx * 8 + (7 - bit)]
-                if bit_val == background_value:
-                    value |= 1 << bit
-            bitmap[y][byte_idx] = value
+            bitmap[y][byte_idx] = sum(
+                1 << bit for bit in range(8) if bits[row_base + byte_idx * 8 + (7 - bit)] == 0
+            )
 
     glyphs = GlyphSet()
 
@@ -430,9 +415,7 @@ def image_to_hex_page(
         else:
             use_bytes = [1, 2]
 
-        hex_parts: list[str] = []
-        for i in range(8, 24):
-            hex_parts.extend(f"{charbytes[i][b]:02X}" for b in use_bytes)
+        hex_parts = [f"{charbytes[i][b]:02X}" for i in range(8, 24) for b in use_bytes]
 
         if skip_blank and all(part == "00" for part in hex_parts):
             continue
@@ -462,9 +445,7 @@ def _rgba_to_bits(
         ValueError: If any pixel is not represented in the scheme map.
     """
     rgba_map = {COLOR_MAP[name]: value for name, value in scheme.color_map.items()}
-    bits: list[int] = []
-    for pixel in rgba_values:
-        if pixel not in rgba_map:
-            raise ValueError(f"Invalid pixel RGBA value: {pixel}")
-        bits.append(rgba_map[pixel])
-    return bits
+    try:
+        return [rgba_map[pixel] for pixel in rgba_values]
+    except KeyError as exc:
+        raise ValueError(f"Invalid pixel RGBA value: {exc.args[0]}") from exc
