@@ -132,6 +132,14 @@ def _resolve_output(font_path: str, output: str | None, overwrite: bool) -> str:
     return output if output else (font_path if overwrite else output_path(font_path))
 
 
+def _load_glyphs(font_path: str, silent: bool = False) -> GlyphSet:
+    """Load a glyph set, optionally suppressing stdout noise from loaders."""
+    if not silent:
+        return GlyphSet.load_hex_file(font_path)
+    with redirect_stdout(io.StringIO()):
+        return GlyphSet.load_hex_file(font_path)
+
+
 @hex_group.command(name="add")
 @click.option(
     "--font_path",
@@ -322,18 +330,15 @@ def hex_view(font_path, code_point):
 )
 def hex_query(font_path, code_point, pure):
     """Print the .hex string for a glyph in a .hex file."""
-    if pure:
-        with redirect_stdout(io.StringIO()):
-            glyphs = GlyphSet.load_hex_file(font_path)
-    else:
-        glyphs = GlyphSet.load_hex_file(font_path)
     try:
+        glyphs = _load_glyphs(font_path, silent=pure)
         glyph = glyphs.get_glyph(code_point)
     except Exception as exc:  # pragma: no cover - delegated to Click for UX
         raise click.ClickException(str(exc)) from exc
 
     display_cp = Validator.code_point_display(code_point)
-    click.echo(f"U+{display_cp}: {glyph.hex_str}")
+    output = glyph.hex_str if pure else f"U+{display_cp}: {glyph.hex_str}"
+    click.echo(output)
 
 
 @cli.group()
