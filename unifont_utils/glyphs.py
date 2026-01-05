@@ -252,6 +252,18 @@ def _pattern_matches(
 
     This helper consolidates the repeated matching logic used in `replace` and
     `find_matches`.
+
+    Args:
+        pattern_data (list[int]): Pattern pixel data to match.
+        height (int): Pattern height.
+        width (int): Pattern width.
+        image_data (list[int]): Target glyph data.
+        image_width (int): Width of the target glyph.
+        row (int): Row offset to check.
+        col (int): Column offset to check.
+
+    Returns:
+        bool: ``True`` when the pattern matches at the given position.
     """
     for y in range(height):
         for x in range(width):
@@ -276,6 +288,15 @@ def _apply_pattern_to_data(
 
     This consolidates the repeated application logic used in `replace` and
     `apply_pattern`.
+
+    Args:
+        pattern_b (list[int]): Replacement pattern pixels.
+        height (int): Pattern height.
+        width (int): Pattern width.
+        img_data (list[int]): Target glyph data to mutate.
+        image_width (int): Width of the target glyph.
+        row (int): Row offset to apply the pattern.
+        col (int): Column offset to apply the pattern.
     """
     for y in range(height):
         for x in range(width):
@@ -368,7 +389,12 @@ class Glyph:
         self._width = 16 if len(self._hex_str) == 64 else 8
 
     def update_data_at_index(self, index: int, value: int) -> None:
-        """Update the pixel data at a specific index."""
+        """Update the pixel data at a specific index.
+
+        Args:
+            index (int): Position within the glyph data.
+            value (int): New pixel value (0 or 1).
+        """
         self._data[index] = value
         self._hex_str = Converter.to_hex(self._data)
 
@@ -452,18 +478,16 @@ class Glyph:
         color_auto_detect: bool = True,
         color_scheme: str | ColorScheme | None = None,
     ) -> None:
-        """Load an image file.
+        """Load glyph pixel data from an image file.
 
         Args:
-            img_path (FilePath): The path to the image file.
-            color_auto_detect (bool, optional): Whether to automatically detect the color scheme.
-
-                Defaults to `True`.
-            color_scheme (str | ColorScheme | None, optional): The color scheme of the glyph.
+            img_path: Path to the image file.
+            color_auto_detect: Auto-detect the color scheme when ``True``.
+            color_scheme: Explicit color scheme to apply; disables auto detection when set.
 
         Raises:
-            ValueError: If the color scheme is invalid.
-            FileNotFoundError: If the image file is not found.
+            FileNotFoundError: If the image file does not exist.
+            ValueError: If the color scheme cannot be determined or is invalid.
         """
         if color_scheme is None and not color_auto_detect:
             raise ValueError("You must specify a color scheme if automatic detection is disabled.")
@@ -518,18 +542,16 @@ class Glyph:
         color_auto_detect: bool = True,
         color_scheme: str | ColorScheme | None = None,
     ) -> "Glyph":
-        """Create a new Glyph object from a code point and an image file.
+        """Create a glyph from a code point and an image file.
 
         Args:
-            code_point (CodePoint): The code point of the character represented by the glyph.
-            img_path (FilePath): The path to the image file.
-            color_auto_detect (bool, optional): Whether to automatically detect the color scheme.
-
-                Defaults to `True`.
-            color_scheme (str | ColorScheme | None, optional): The color scheme of the glyph.
+            code_point: Code point of the glyph to create.
+            img_path: Path to the image file.
+            color_auto_detect: Auto-detect the color scheme when ``True``.
+            color_scheme: Explicit color scheme to apply; disables auto detection when set.
 
         Returns:
-            Glyph: The created glyph object.
+            Glyph: The created glyph instance.
         """
         code_point = Validator.code_point(code_point)
         g = cls(code_point)
@@ -542,16 +564,15 @@ class Glyph:
         img_format: str = "PNG",
         color_scheme: str | ColorScheme | None = None,
     ) -> None:
-        """Save Unifont glyphs as PNG images.
+        """Save the glyph as an image file.
 
         Args:
-            save_path (FilePath): The path to save the image.
-            img_format (str, optional): The format of the image. Defaults to `PNG`.
-            color_scheme (str | ColorScheme | None, optional): The color scheme of the   glyph.
+            save_path: Destination path for the image.
+            img_format: Target image format (``PNG`` or ``BMP``).
+            color_scheme: Color scheme used when rendering the glyph.
 
         Raises:
-            ValueError: If the image format is not supported.
-            ValueError: If the glyph data or size is invalid.
+            ValueError: If the image format is unsupported or the glyph data is invalid.
         """
         save_path = Validator.file_path(save_path)
         img_format = img_format.upper()
@@ -587,20 +608,12 @@ class Glyph:
         display_hex: bool = False,
         display_bin: bool = False,
     ) -> None:
-        """Print a Unifont glyph to the console.
+        """Print a glyph to the console using Rich.
 
         Args:
-            color_scheme (str | ColorScheme | None, optional): The color scheme of the glyph.
-            display_hex (bool, optional): Whether to display the hexadecimal strings.
-
-                Defaults to `False`.
-
-                If `True`, the hexadecimal string of each line will be displayed on the left.
-            display_bin (bool, optional): Whether to display the binary strings.
-
-                Defaults to `False`.
-
-                If `True`, the binary string of each line will be displayed on the left.
+            color_scheme: Color scheme used for rendering; defaults to the glyph's scheme.
+            display_hex: Include per-row hexadecimal strings when ``True``.
+            display_bin: Include per-row binary strings when ``True``.
         """
         console = Console()
 
@@ -908,14 +921,8 @@ class GlyphSet:
         """Get a set of glyphs by their code points.
 
         Args:
-            code_points (CodePoints): The code points of the glyphs to get.
-
-                The code points specified should be hexadecimal number strings.
-            skip_empty (bool, optional): Whether to skip empty glyphs. Defaults to `True`.
-
-                If `True`, empty glyphs will be skipped.
-
-                If `False`, empty glyphs will be included with empty `.hex` strings.
+            code_points: Iterable of hexadecimal code points to retrieve.
+            skip_empty: When ``True``, omit glyphs that are missing in the set.
 
         Returns:
             GlyphSet: The obtained set of glyphs.
@@ -933,9 +940,7 @@ class GlyphSet:
         """Add a glyph to the set.
 
         Args:
-            glyph (Glyph | tuple[CodePoint, str]): The glyph to add.
-
-                If a tuple is provided, it should be in the format of `(code_point, hex_str)`.
+            glyph: Glyph instance or a ``(code_point, hex_str)`` tuple to add.
         """
         glyph_obj = _validate_and_create_glyph(glyph)
         if glyph_obj.code_point in self._glyphs:
@@ -959,9 +964,8 @@ class GlyphSet:
         """Update a glyph in the set.
 
         Args:
-            glyph (Glyph | tuple[CodePoint, str]): The new glyph to update.
-
-                If a tuple is provided, it should be in the format of `(code_point, hex_str)`.
+            glyph (Glyph | tuple[CodePoint, str]): The new glyph to update. If a tuple is
+                provided, it should be ``(code_point, hex_str)``.
         """
         glyph_obj = _validate_and_create_glyph(glyph)
         if glyph_obj.code_point not in self._glyphs:
@@ -970,7 +974,11 @@ class GlyphSet:
         self._glyphs[glyph_obj.code_point].hex_str = glyph_obj.hex_str
 
     def sort_glyphs(self) -> None:
-        """Sort the glyphs in the set by their code points."""
+        """Sort the glyphs in the set by their code points.
+
+        Raises:
+            ValueError: If the glyph set is empty.
+        """
         if not self._glyphs:
             raise ValueError("Cannot sort an empty glyph set.")
         self._glyphs = dict(sorted(self._glyphs.items(), key=lambda x: int(x[0], 16)))

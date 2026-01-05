@@ -27,12 +27,12 @@ def output_path(font_path: str) -> str:
 
 
 @click.group()
-def cli():
+def cli() -> None:
     """Unipie - Unifont Pixel Interactive Editor"""
 
 
 @cli.group()
-def edit():
+def edit() -> None:
     """Edit the Unifont .hex glyphs."""
 
 
@@ -58,7 +58,7 @@ def edit():
     show_default=True,
     help="Overwrite the original .hex file when no --output is given.",
 )
-def hex_file(font_path, code_point, output, overwrite):
+def hex_file(font_path: str, code_point: str, output: str | None, overwrite: bool) -> None:
     """Edit a code point in the Unifont .hex file."""
     click.echo(f"Editing Unifont .hex file: {font_path}")
     display_cp = Validator.code_point_display(code_point)
@@ -84,7 +84,7 @@ def hex_file(font_path, code_point, output, overwrite):
     type=str,
     help="The .hex format string to edit.",
 )
-def hex_str(code_point, hex_string):
+def hex_str(code_point: str, hex_string: str) -> None:
     """Edit a single Unifont .hex format string."""
     display_cp = Validator.code_point_display(code_point)
     click.echo(f"Editing code point: {display_cp}")
@@ -99,7 +99,7 @@ def hex_str(code_point, hex_string):
 @edit.command()
 @click.option("--code_point", "--cp", required=True, type=str, help="The code point to edit.")
 @click.option("--width", "-w", default=16, type=int, help="The width of the glyph.")
-def empty(code_point, width):
+def empty(code_point: str, width: int) -> None:
     """Create an empty Unifont glyph for editing."""
     display_cp = Validator.code_point_display(code_point)
     click.echo(f"Editing code point: {display_cp}")
@@ -113,7 +113,7 @@ def empty(code_point, width):
 
 
 @cli.group(name="hex")
-def hex_group():
+def hex_group() -> None:
     """Directly modify .hex files using raw strings."""
 
 
@@ -171,7 +171,13 @@ def _load_glyphs(font_path: str, silent: bool = False) -> GlyphSet:
     show_default=True,
     help="Overwrite the original .hex file when no --output is given.",
 )
-def hex_add(font_path, code_point, hex_string, output, overwrite):
+def hex_add(
+    font_path: str,
+    code_point: str,
+    hex_string: str,
+    output: str | None,
+    overwrite: bool,
+) -> None:
     """Add a new code point entry to a .hex file."""
     target = _resolve_output(font_path, output, overwrite)
     glyphs = GlyphSet.load_hex_file(font_path)
@@ -223,7 +229,13 @@ def hex_add(font_path, code_point, hex_string, output, overwrite):
     show_default=True,
     help="Overwrite the original .hex file when no --output is given.",
 )
-def hex_replace(font_path, code_point, hex_string, output, overwrite):
+def hex_replace(
+    font_path: str,
+    code_point: str,
+    hex_string: str,
+    output: str | None,
+    overwrite: bool,
+) -> None:
     """Replace an existing code point entry in a .hex file."""
     target = _resolve_output(font_path, output, overwrite)
     glyphs = GlyphSet.load_hex_file(font_path)
@@ -261,7 +273,7 @@ def hex_replace(font_path, code_point, hex_string, output, overwrite):
     show_default=True,
     help="Overwrite the original .hex file when no --output is given.",
 )
-def hex_delete(font_path, code_point, output, overwrite):
+def hex_delete(font_path: str, code_point: str, output: str | None, overwrite: bool) -> None:
     """Delete a code point entry from a .hex file."""
     target = _resolve_output(font_path, output, overwrite)
     glyphs = GlyphSet.load_hex_file(font_path)
@@ -292,7 +304,7 @@ def hex_delete(font_path, code_point, output, overwrite):
     type=str,
     help="The code point to view.",
 )
-def hex_view(font_path, code_point):
+def hex_view(font_path: str, code_point: str) -> None:
     """Render a glyph from a .hex file in the console."""
     glyphs = GlyphSet.load_hex_file(font_path)
     try:
@@ -328,7 +340,7 @@ def hex_view(font_path, code_point):
     show_default=True,
     help="Only output the glyph .hex string, suppressing load logs.",
 )
-def hex_query(font_path, code_point, pure):
+def hex_query(font_path: str, code_point: str, pure: bool) -> None:
     """Print the .hex string for a glyph in a .hex file."""
     try:
         glyphs = _load_glyphs(font_path, silent=pure)
@@ -342,12 +354,12 @@ def hex_query(font_path, code_point, pure):
 
 
 @cli.group()
-def convert():
+def convert() -> None:
     """Convert between Unifont formats."""
 
 
 @convert.group()
-def single():
+def single() -> None:
     """Convert a single glyph between .hex and image."""
 
 
@@ -384,7 +396,12 @@ def single():
     type=str,
     help="The color scheme for the output image.",
 )
-def single_hex2img(hex_string, output, img_format, color_scheme):
+def single_hex2img(
+    hex_string: str,
+    output: str,
+    img_format: str,
+    color_scheme: str,
+) -> None:
     """Convert a .hex format string to an image."""
     Glyph.init_from_hex(0, hex_string).save_img(
         output, img_format=img_format, color_scheme=color_scheme
@@ -416,7 +433,7 @@ def single_hex2img(hex_string, output, img_format, color_scheme):
     type=str,
     help="The color scheme for the output image.",
 )
-def single_img2hex(img_path, auto_detect, color_scheme):
+def single_img2hex(img_path: str, auto_detect: bool, color_scheme: str | None) -> None:
     """Convert an image to a .hex format string."""
     click.echo(f"Loading image: {img_path}\n")
     glyph = Glyph.init_from_img(
@@ -426,7 +443,7 @@ def single_img2hex(img_path, auto_detect, color_scheme):
 
 
 @convert.group()
-def page():
+def page() -> None:
     """Convert an entire 256-code-point page between .hex and image."""
 
 
@@ -469,7 +486,13 @@ def page():
     type=str,
     help="The color scheme for the output image.",
 )
-def page_hex2img(font_path, glyph_page, output, img_format, color_scheme):
+def page_hex2img(
+    font_path: str,
+    glyph_page: str,
+    output: str,
+    img_format: str | None,
+    color_scheme: str,
+) -> None:
     """Convert a .hex file page to an image."""
     glyphs = GlyphSet.load_hex_file(font_path)
     try:
@@ -525,7 +548,13 @@ def page_hex2img(font_path, glyph_page, output, img_format, color_scheme):
     type=str,
     help="Manually specify the color scheme when auto detection is disabled.",
 )
-def page_img2hex(img_path, glyph_page, output, auto_detect, color_scheme):
+def page_img2hex(
+    img_path: str,
+    glyph_page: str,
+    output: str,
+    auto_detect: bool,
+    color_scheme: str | None,
+) -> None:
     """Convert a page image to a .hex file containing 256 code points."""
     if not auto_detect and color_scheme is None:
         raise click.ClickException("Specify --color_scheme when --no-auto_detect is used.")
@@ -576,7 +605,13 @@ def page_img2hex(img_path, glyph_page, output, auto_detect, color_scheme):
     type=int,
     help="Network timeout in seconds for downloading.",
 )
-def download(version, variant, output, force, timeout):
+def download(
+    version: str | None,
+    variant: str,
+    output: str | None,
+    force: bool,
+    timeout: int,
+) -> None:
     """Download and extract Unifont .hex releases."""
     downloader = UnifontDownloader(timeout=timeout)
 
@@ -604,7 +639,7 @@ def download(version, variant, output, force, timeout):
 
 
 @cli.command()
-def info():
+def info() -> None:
     """Show information about Unipie."""
     click.echo("Unipie - Unifont Pixel Interactive Editor\n")
     click.echo("Unipie v0.3.1")

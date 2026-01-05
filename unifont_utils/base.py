@@ -13,19 +13,19 @@ CodePoints: TypeAlias = Sequence[CodePoint] | set[CodePoint]
 
 
 class Validator:
-    """Class for validators."""
+    """Helpers for validating common Unifont values."""
 
-    HEX_CHARS = set("0123456789ABCDEF")
+    HEX_CHARS: set[str] = set("0123456789ABCDEF")
 
     @staticmethod
     def code_point(code_point: CodePoint) -> str:
         """Validate a code point string and return its normalized form.
 
         Args:
-            code_point (CodePoint): The code point string to validate.
+            code_point (CodePoint): Code point as an integer or hexadecimal string.
 
         Returns:
-            str: The normalized code point if valid.
+            str: Normalized uppercase code point.
 
         Raises:
             TypeError: If the code point is not a string or an integer.
@@ -97,10 +97,10 @@ class Validator:
         """Validate a hexadecimal string and return its normalized form.
 
         Args:
-            hex_str (str, optional): The hexadecimal string to validate.
+            hex_str (str | None): The hexadecimal string to validate.
 
         Returns:
-            str: The normalized hexadecimal string if valid.
+            str: Normalized hexadecimal string.
 
         Raises:
             ValueError: If the hexadecimal string is invalid.
@@ -127,7 +127,7 @@ class Validator:
             file_path (FilePath): The file path to validate.
 
         Returns:
-            Path: The normalized file path if valid.
+            Path: Normalized file path.
 
         Raises:
             TypeError: If the file path is not a string or a Path object.

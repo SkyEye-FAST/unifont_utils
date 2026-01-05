@@ -10,16 +10,16 @@ class Converter:
 
     @staticmethod
     def to_hex(data: Iterable[int]) -> str:
-        """Convert glyph pixel data to a Unifont `.hex` string.
+        """Convert glyph pixel data to a Unifont ``.hex`` string.
 
         Args:
-            data (Iterable[int]): Glyph pixels stored as `0` or `1`.
+            data (Iterable[int]): Glyph pixels stored as ``0`` or ``1``.
 
         Returns:
-            str: The `.hex` string representing the glyph.
+            str: The ``.hex`` string representing the glyph.
 
         Raises:
-            ValueError: If the input is empty or contains values other than `0` or `1`.
+            ValueError: If the input is empty or contains values other than ``0`` or ``1``.
         """
         bits = [int(bit) for bit in data]
         if not bits:
@@ -31,15 +31,15 @@ class Converter:
 
     @staticmethod
     def to_img_data(hex_str: str, width: int = 16, height: int = 16) -> list[int]:
-        """Convert a Unifont `.hex` string to glyph pixel data.
+        """Convert a Unifont ``.hex`` string to glyph pixel data.
 
         Args:
-            hex_str (str): The `.hex` string to decode.
+            hex_str (str): The ``.hex`` string to decode.
             width (int): Glyph width in pixels.
             height (int): Glyph height in pixels.
 
         Returns:
-            list[int]: Glyph pixels as `0` and `1` values ordered row-major from top-left.
+            list[int]: Glyph pixels as ``0`` and ``1`` values ordered row-major from top-left.
 
         Raises:
             ValueError: If the hex string is invalid or exceeds the expected size.

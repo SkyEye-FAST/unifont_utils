@@ -179,11 +179,13 @@ class EditWidget(Static, can_focus=True):
         """Quit the application."""
         self.app.exit()
 
-    def _handle_mouse_event(self, event, update_data: bool = False) -> None:
+    def _handle_mouse_event(
+        self, event: events.MouseDown | events.MouseMove, update_data: bool = False
+    ) -> None:
         """Handle mouse interactions; update cursor and optionally pixel data.
 
         Args:
-            event: Textual mouse event with `x`, `y`, `button`, `ctrl`.
+            event: Textual mouse event with ``x``, ``y``, ``button``, ``ctrl``.
             update_data (bool): Write pixel changes when True.
         """
         grid_x = (event.x - 5) // 2
@@ -221,7 +223,7 @@ class ReplaceWidget(Static, can_focus=True):
     """
 
     match_index = reactive(0)
-    matches = []
+    matches: list[tuple[int, int]] = []
     glyph: Glyph
 
     BINDINGS = [
@@ -351,7 +353,7 @@ class GlyphEditor(App):
         """
         super().__init__()
         self.glyph = glyph
-        self.edit_widget = None
+        self.edit_widget: EditWidget | None = None
 
     def action_toggle_dark(self) -> None:
         """Toggle the theme and refresh the edit widget if mounted."""
@@ -396,7 +398,7 @@ class GlyphReplacer(App):
         self.glyph = glyph
         self.search_pattern = search_pattern
         self.replace_pattern = replace_pattern
-        self.replace_widget = None
+        self.replace_widget: ReplaceWidget | None = None
 
     def action_toggle_dark(self) -> None:
         """Toggle theme and refresh the replace widget if mounted."""

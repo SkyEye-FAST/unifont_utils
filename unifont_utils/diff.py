@@ -66,12 +66,9 @@ def print_diff(
     Args:
         glyph_a (str | Glyph): The first glyph to compare.
         glyph_b (str | Glyph): The second glyph to compare.
-        black_and_white (bool, optional): Whether the images are black-and-white.
-            Defaults to ``True``. If ``True``, ``0`` is white and ``1`` is black.
-            If ``False``, ``0`` is transparent and ``1`` is white.
-
-    Returns:
-        None
+        black_and_white (bool): Whether the images are black-and-white. If ``True``,
+            ``0`` is white and ``1`` is black. If ``False``, ``0`` is transparent and ``1`` is
+            white.
     """
     diff_list = diff_glyphs(glyph_a, glyph_b)
     a, b = get_img_data(glyph_a), get_img_data(glyph_b)
