@@ -1,5 +1,5 @@
 # @Author: SkyEye_FAST <skyeyefast@foxmail.com>
-# @Copyright: Copyright (C) 2024-2025 SkyEye_FAST
+# @Copyright: Copyright (C) 2024-2026 SkyEye_FAST
 """Utilities for converting an entire 256-code-point page between .hex and images."""
 
 from collections.abc import Iterable

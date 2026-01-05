@@ -1,5 +1,5 @@
 # @Author: SkyEye_FAST <skyeyefast@foxmail.com>
-# @Copyright: Copyright (C) 2024-2025 SkyEye_FAST
+# @Copyright: Copyright (C) 2024-2026 SkyEye_FAST
 """Unifont Utils - Console"""
 
 import io
