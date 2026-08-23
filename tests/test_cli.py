@@ -1,4 +1,4 @@
-"""Granular CLI tests for Unipie."""
+"""Granular CLI tests for Unifont Utils."""
 
 from pathlib import Path
 
@@ -6,9 +6,9 @@ import pytest
 from click.testing import CliRunner
 from PIL import Image as Img
 
-from unifont_utils.console import cli
+from unifont_utils import Glyph, GlyphSet, __version__
+from unifont_utils.console import cli, output_path
 from unifont_utils.converter import Converter
-from unifont_utils.glyphs import Glyph, GlyphSet
 from unifont_utils.page_converter import save_page_image
 
 
@@ -54,7 +54,14 @@ def test_info(runner: CliRunner) -> None:
     """CLI info command prints metadata."""
     res = runner.invoke(cli, ["info"])
     assert res.exit_code == 0
-    assert "Unipie" in res.output
+    assert "Unifont Utils" in res.output
+    assert f"Version {__version__}" in res.output
+
+
+def test_output_path_only_changes_the_filename_suffix(tmp_path: Path) -> None:
+    """Default edited paths do not replace '.hex' text in parent directories."""
+    source = tmp_path / "contains.hex" / "font.hex"
+    assert output_path(str(source)) == str(source.with_name("font_edited.hex"))
 
 
 def test_download_stubbed(

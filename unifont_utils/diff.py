@@ -6,9 +6,9 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from .base import Validator as Validator
-from .converter import Converter
-from .glyphs import Glyph
+from unifont_utils.base import Validator
+from unifont_utils.converter import Converter
+from unifont_utils.glyph import Glyph
 
 
 def get_img_data(glyph: str | Glyph) -> list[int]:
@@ -51,7 +51,7 @@ def diff_glyphs(glyph_a: str | Glyph, glyph_b: str | Glyph) -> list[str]:
 
     return [
         "+" if not i and j else "-" if i and not j else "1" if i and j else "0"
-        for i, j in zip(a, b)
+        for i, j in zip(a, b, strict=True)
     ]
 
 

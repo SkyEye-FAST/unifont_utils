@@ -10,8 +10,9 @@ from textual.app import App, ComposeResult
 from textual.reactive import reactive
 from textual.widgets import Footer, Header, Static
 
-from .base import Validator
-from .glyphs import Glyph, ReplacePattern, SearchPattern
+from unifont_utils.base import Validator
+from unifont_utils.glyph import Glyph
+from unifont_utils.patterns import ReplacePattern, SearchPattern
 
 
 def is_app_dark(app: App) -> bool:
@@ -36,7 +37,7 @@ def _hex_index(index: int) -> str:
     Returns:
         str: Two-character, zero-padded, uppercase hexadecimal representation.
     """
-    return hex(index)[2:].rjust(2).upper()
+    return f"{index:02X}"
 
 
 def _color_by_index(index: int) -> str:
@@ -223,7 +224,7 @@ class ReplaceWidget(Static, can_focus=True):
     """
 
     match_index = reactive(0)
-    matches: list[tuple[int, int]] = []
+    matches: list[tuple[int, int]]
     glyph: Glyph
 
     BINDINGS = [
@@ -326,11 +327,14 @@ class ReplaceWidget(Static, can_focus=True):
 
     def action_apply(self) -> None:
         """Apply replacement at the selected match and refresh matches."""
-        if self.matches:
-            match_pos = self.matches[self.match_index]
-            self.glyph.apply_pattern(match_pos[0], match_pos[1], self.replace_pattern)
-            self.render_glyph()
+        if not self.matches:
+            return
+
+        match_position = self.matches[self.match_index]
+        self.glyph.apply_pattern(*match_position, self.replace_pattern)
         self.matches = self.glyph.find_matches(self.search_pattern)
+        self.match_index = min(self.match_index, max(len(self.matches) - 1, 0))
+        self.render_glyph()
 
     def action_quit(self) -> None:
         """Quit the application."""

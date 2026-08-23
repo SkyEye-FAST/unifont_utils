@@ -3,20 +3,42 @@
 import pytest
 from PIL import Image
 
+from unifont_utils import ColorScheme, Glyph, GlyphSet, ReplacePattern, SearchPattern
 from unifont_utils.converter import Converter
-from unifont_utils.glyphs import Glyph, GlyphSet, ReplacePattern, SearchPattern
 
 
 def test_search_pattern_requires_binary_data():
     """SearchPattern only allows 0/1 values."""
     with pytest.raises(ValueError):
         SearchPattern([0, -1, 1, 0, 1, 0, 1, 1, 0], 3, 3)
+    with pytest.raises(ValueError):
+        SearchPattern([True] * 9, 3, 3)
 
 
 def test_replace_pattern_rejects_invalid_values():
     """ReplacePattern only allows 0/1/-1 values."""
     with pytest.raises(ValueError):
         ReplacePattern([2, 0, 1, 0, 1, 0, 1, 1, 0], 3, 3)
+
+
+@pytest.mark.parametrize(
+    ("pattern_type", "data", "width", "height"),
+    [
+        (SearchPattern, [1] * 8, 2, 4),
+        (SearchPattern, [1] * 9, 3, 4),
+        (ReplacePattern, [0] * 9, 17, None),
+    ],
+)
+def test_patterns_validate_dimensions(pattern_type, data, width, height):
+    """Specialized patterns retain the base dimension validation."""
+    with pytest.raises(ValueError):
+        pattern_type(data, width, height)
+
+
+def test_pattern_dimensions_reject_bool():
+    """Boolean dimensions are not accepted as integers."""
+    with pytest.raises(TypeError):
+        SearchPattern([1] * 9, True, 3)
 
 
 def test_glyph_hex_and_data_stay_in_sync():
@@ -45,6 +67,27 @@ def test_glyph_data_property_returns_copy():
     data_view[0] = 1
 
     assert glyph.data[0] == 0
+
+
+def test_glyph_mutation_validates_data_and_lazy_hex():
+    """Pixel mutations initialize lazy data and reject invalid values and sizes."""
+    glyph = Glyph.init_from_hex("0042", "0" * 32)
+    glyph.update_data_at_index(0, 1)
+    assert glyph.hex_str.startswith("8")
+
+    with pytest.raises(ValueError):
+        glyph.update_data_at_index(0, 2)
+    with pytest.raises(IndexError):
+        glyph.update_data_at_index(128, 1)
+    with pytest.raises(ValueError):
+        glyph.data = [0] * 8
+
+
+def test_color_scheme_mapping_is_read_only():
+    """Callers cannot mutate a color scheme's internal mapping."""
+    scheme = ColorScheme()
+    with pytest.raises(TypeError):
+        scheme.color_map["white"] = 1  # type: ignore[index]
 
 
 def test_find_matches_and_replace_pattern():
@@ -111,6 +154,13 @@ def test_save_img_rejects_invalid_format(tmp_path):
         glyph.save_img(tmp_path / "out.jpg", img_format="JPG")
 
 
+def test_save_img_rejects_empty_glyph(tmp_path):
+    """Empty glyphs fail with a domain validation error before Pillow is called."""
+    glyph = Glyph.init_from_hex("0047", "")
+    with pytest.raises(ValueError, match="Invalid glyph data"):
+        glyph.save_img(tmp_path / "empty.png")
+
+
 def test_glyphset_add_update_remove_and_errors():
     """Add, update, remove glyphs and validate error paths."""
     glyph_set = GlyphSet()
@@ -134,11 +184,13 @@ def test_glyphset_add_update_remove_and_errors():
         glyph_set.get_glyph("FFFF")
 
 
-def test_glyphset_sort_empty_raises():
-    """Sorting an empty GlyphSet raises an error."""
+def test_glyphset_empty_access_is_safe():
+    """An empty GlyphSet behaves like a normal empty collection."""
     glyph_set = GlyphSet()
-    with pytest.raises(ValueError):
-        glyph_set.sort_glyphs()
+    glyph_set.sort_glyphs()
+    assert glyph_set.code_points == []
+    assert dict(glyph_set.glyphs) == {}
+    assert list(glyph_set) == []
 
 
 def test_save_and_load_hex_file_sorted_and_round_trips(tmp_path):

@@ -2,9 +2,9 @@
 
 import pytest
 
+from unifont_utils import Glyph
 from unifont_utils.converter import Converter
 from unifont_utils.diff import diff_glyphs, get_img_data
-from unifont_utils.glyphs import Glyph
 
 
 def test_get_img_data_accepts_hex_and_glyph():

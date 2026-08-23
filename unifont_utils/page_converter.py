@@ -8,8 +8,10 @@ from typing import cast
 
 from PIL import Image as Img
 
-from .base import FilePath, Validator
-from .glyphs import COLOR_MAP, ColorScheme, Glyph, GlyphSet
+from unifont_utils.base import FilePath, Validator
+from unifont_utils.colors import COLOR_MAP, ColorScheme
+from unifont_utils.glyph import Glyph
+from unifont_utils.glyph_set import GlyphSet
 
 HEX_DIGIT_STRINGS: list[str] = [
     "0030:00000000182442424242424224180000",
@@ -284,12 +286,15 @@ def hex_page_to_image(
     if scheme.name == "black_and_white":
         return mask
 
-    background_rgba = _background_rgba(scheme)
-    foreground_rgba = _foreground_rgba(scheme)
-    pixels = [foreground_rgba if value < 128 else background_rgba for value in mask.getdata()]
-    colored = Img.new("RGBA", mask.size)
-    colored.putdata(pixels)
-    return colored
+    try:
+        background_rgba = _background_rgba(scheme)
+        foreground_rgba = _foreground_rgba(scheme)
+        pixels = [foreground_rgba if value < 128 else background_rgba for value in mask.getdata()]
+        colored = Img.new("RGBA", mask.size)
+        colored.putdata(pixels)
+        return colored
+    finally:
+        mask.close()
 
 
 def save_page_image(
@@ -321,8 +326,10 @@ def save_page_image(
     resolved_format = _resolve_image_format(output_path, img_format)
     try:
         img.save(output_path, format=resolved_format)
-    except Exception as exc:  # pragma: no cover - delegated to Pillow
+    except (KeyError, OSError, ValueError) as exc:  # pragma: no cover - delegated to Pillow
         raise ValueError(f"Failed to save image in format {resolved_format}: {exc}") from exc
+    finally:
+        img.close()
     return output_path
 
 
@@ -354,26 +361,26 @@ def image_to_hex_page(
     """
     page_int = _normalize_page(page)
     resolved_path = Validator.file_path(img_path)
-    if not resolved_path.exists():
+    if not resolved_path.is_file():
         raise FileNotFoundError(f"File not found: {resolved_path}")
 
     if color_scheme is None and not color_auto_detect:
         raise ValueError("Specify a color scheme when auto detection is disabled.")
 
-    image = Img.open(resolved_path).convert("RGBA")
-    if image.size != (UNIHEX_WIDTH, UNIHEX_HEIGHT):
-        raise ValueError("Image dimensions must be 576x544 to match unihex2bmp output.")
+    with Img.open(resolved_path) as source, source.convert("RGBA") as image:
+        if image.size != (UNIHEX_WIDTH, UNIHEX_HEIGHT):
+            raise ValueError("Image dimensions must be 576x544 to match unihex2bmp output.")
 
-    rgba_values = list(cast(Iterable[tuple[int, int, int, int]], image.getdata()))  # type: ignore
-    scheme = (
-        ColorScheme(Glyph.auto_detect_color_scheme(image.size[0], rgba_values))
-        if color_auto_detect
-        else (
-            color_scheme
-            if isinstance(color_scheme, ColorScheme)
-            else ColorScheme(color_scheme or "black_and_white")
+        rgba_values = list(cast(Iterable[tuple[int, int, int, int]], cast(object, image.getdata())))
+        scheme = (
+            ColorScheme(Glyph.auto_detect_color_scheme(image.size[0], rgba_values))
+            if color_auto_detect
+            else (
+                color_scheme
+                if isinstance(color_scheme, ColorScheme)
+                else ColorScheme(color_scheme or "black_and_white")
+            )
         )
-    )
 
     bits = _rgba_to_bits(rgba_values, scheme)
 

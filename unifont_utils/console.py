@@ -2,16 +2,17 @@
 # @Copyright: Copyright (C) 2024-2026 SkyEye_FAST
 """Unifont Utils - Console"""
 
-import io
-from contextlib import redirect_stdout
+from pathlib import Path
 
 import click
 
-from .base import Validator
-from .downloader import UnifontDownloader
-from .editor import GlyphEditor
-from .glyphs import Glyph, GlyphSet
-from .page_converter import image_to_hex_page, save_page_image
+from unifont_utils._version import __version__
+from unifont_utils.base import Validator
+from unifont_utils.downloader import UnifontDownloader
+from unifont_utils.editor import GlyphEditor
+from unifont_utils.glyph import Glyph
+from unifont_utils.glyph_set import GlyphSet
+from unifont_utils.page_converter import image_to_hex_page, save_page_image
 
 
 def output_path(font_path: str) -> str:
@@ -23,12 +24,13 @@ def output_path(font_path: str) -> str:
     Returns:
         str: Suggested output path with "_edited" suffix.
     """
-    return font_path.replace(".hex", "_edited.hex")
+    path = Path(font_path)
+    return str(path.with_name(f"{path.stem}_edited.hex"))
 
 
 @click.group()
 def cli() -> None:
-    """Unipie - Unifont Pixel Interactive Editor"""
+    """Work with GNU Unifont glyphs, files, and page images."""
 
 
 @cli.group()
@@ -63,7 +65,7 @@ def hex_file(font_path: str, code_point: str, output: str | None, overwrite: boo
     click.echo(f"Editing Unifont .hex file: {font_path}")
     display_cp = Validator.code_point_display(code_point)
     click.echo(f"Editing code point: {display_cp}\n")
-    output = output if output else (font_path if overwrite else output_path(font_path))
+    output = _resolve_output(font_path, output, overwrite)
 
     glyphs = GlyphSet.load_hex_file(font_path)
     GlyphEditor(glyphs[code_point]).run()
@@ -132,12 +134,9 @@ def _resolve_output(font_path: str, output: str | None, overwrite: bool) -> str:
     return output if output else (font_path if overwrite else output_path(font_path))
 
 
-def _load_glyphs(font_path: str, silent: bool = False) -> GlyphSet:
-    """Load a glyph set, optionally suppressing stdout noise from loaders."""
-    if not silent:
-        return GlyphSet.load_hex_file(font_path)
-    with redirect_stdout(io.StringIO()):
-        return GlyphSet.load_hex_file(font_path)
+def _load_glyphs(font_path: str) -> GlyphSet:
+    """Load a glyph set from a font file."""
+    return GlyphSet.load_hex_file(font_path)
 
 
 @hex_group.command(name="add")
@@ -338,12 +337,12 @@ def hex_view(font_path: str, code_point: str) -> None:
     "--pure/--verbose",
     default=False,
     show_default=True,
-    help="Only output the glyph .hex string, suppressing load logs.",
+    help="Only output the glyph .hex string.",
 )
 def hex_query(font_path: str, code_point: str, pure: bool) -> None:
     """Print the .hex string for a glyph in a .hex file."""
     try:
-        glyphs = _load_glyphs(font_path, silent=pure)
+        glyphs = _load_glyphs(font_path)
         glyph = glyphs.get_glyph(code_point)
     except Exception as exc:  # pragma: no cover - delegated to Click for UX
         raise click.ClickException(str(exc)) from exc
@@ -506,9 +505,7 @@ def page_hex2img(
     except Exception as exc:  # pragma: no cover - delegated to Click for UX
         raise click.ClickException(str(exc)) from exc
 
-    page_display = (
-        f"0x{int(glyph_page, 16):X}" if isinstance(glyph_page, str) else f"0x{int(glyph_page):X}"
-    )
+    page_display = f"0x{int(glyph_page, 16):X}"
     click.echo(f"Saved page {page_display} to: {output}")
 
 
@@ -640,9 +637,9 @@ def download(
 
 @cli.command()
 def info() -> None:
-    """Show information about Unipie."""
-    click.echo("Unipie - Unifont Pixel Interactive Editor\n")
-    click.echo("Unipie v0.3.1")
+    """Show package information."""
+    click.echo("Unifont Utils\n")
+    click.echo(f"Version {__version__}")
     click.echo("Written by SkyEye_FAST")
 
 

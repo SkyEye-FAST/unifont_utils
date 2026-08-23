@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from PIL import Image as Img
 
+from unifont_utils import Glyph, GlyphSet
 from unifont_utils.converter import Converter
-from unifont_utils.glyphs import Glyph, GlyphSet
 from unifont_utils.page_converter import image_to_hex_page, save_page_image
 
 
