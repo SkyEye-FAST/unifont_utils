@@ -2,7 +2,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-[![Build](https://github.com/SkyEye-FAST/unifont_utils/actions/workflows/build.yml/badge.svg)](https://github.com/SkyEye-FAST/unifont_utils/actions/workflows/build.yml) [![Ruff](https://github.com/SkyEye-FAST/unifont_utils/actions/workflows/ruff.yml/badge.svg)](https://github.com/SkyEye-FAST/unifont_utils/actions/workflows/ruff.yml)
+[![CI](https://github.com/SkyEye-FAST/unifont_utils/actions/workflows/ci.yml/badge.svg)](https://github.com/SkyEye-FAST/unifont_utils/actions/workflows/ci.yml)
 ![PyPI - Version](https://img.shields.io/pypi/v/unifont_utils) ![GitHub Release](https://img.shields.io/github/v/release/SkyEye-FAST/unifont_utils)
 
 - **[English](README.md) | [中文](README_zh.md)**
@@ -16,7 +16,37 @@
 请使用下面的命令从PyPI安装Unifont Utils：
 
 ``` shell
-pip install unifont_utils
+pip install unifont-utils
+```
+
+## 快速开始
+
+通过统一的 Python 公共 API 读取并查询 GNU Unifont `.hex` 文件：
+
+```python
+from unifont_utils import GlyphSet
+
+glyphs = GlyphSet.load_hex_file("unifont.hex")
+glyph = glyphs["0041"]
+print(glyph.hex_str)
+```
+
+命令行工具支持编辑、转换、下载和直接操作 `.hex` 文件：
+
+```shell
+unifont-utils --help
+unifont-utils hex query --path unifont.hex --code_point 0041 --pure
+```
+
+## 开发
+
+项目使用 [uv](https://docs.astral.sh/uv/) 管理锁定环境，并使用 Ruff 检查与格式化代码：
+
+```shell
+uv sync --locked
+uv run --locked pytest
+uv run --locked ruff check .
+uv run --locked ruff format --check .
 ```
 
 ## 协议

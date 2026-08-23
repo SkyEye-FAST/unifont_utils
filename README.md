@@ -2,7 +2,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-[![Build](https://github.com/SkyEye-FAST/unifont_utils/actions/workflows/build.yml/badge.svg)](https://github.com/SkyEye-FAST/unifont_utils/actions/workflows/build.yml) [![Ruff](https://github.com/SkyEye-FAST/unifont_utils/actions/workflows/ruff.yml/badge.svg)](https://github.com/SkyEye-FAST/unifont_utils/actions/workflows/ruff.yml)
+[![CI](https://github.com/SkyEye-FAST/unifont_utils/actions/workflows/ci.yml/badge.svg)](https://github.com/SkyEye-FAST/unifont_utils/actions/workflows/ci.yml)
 ![PyPI - Version](https://img.shields.io/pypi/v/unifont_utils) ![GitHub Release](https://img.shields.io/github/v/release/SkyEye-FAST/unifont_utils)
 
 - **[English](README.md) | [中文](README_zh.md)**
@@ -17,7 +17,38 @@ for more information.**
 Install the package from PyPI using the following command:
 
 ``` shell
-pip install unifont_utils
+pip install unifont-utils
+```
+
+## Quick start
+
+Use the public Python API to load and inspect a GNU Unifont `.hex` file:
+
+```python
+from unifont_utils import GlyphSet
+
+glyphs = GlyphSet.load_hex_file("unifont.hex")
+glyph = glyphs["0041"]
+print(glyph.hex_str)
+```
+
+The command-line interface exposes editing, conversion, download, and direct `.hex` operations:
+
+```shell
+unifont-utils --help
+unifont-utils hex query --path unifont.hex --code_point 0041 --pure
+```
+
+## Development
+
+The repository uses [uv](https://docs.astral.sh/uv/) for locked environments and Ruff for linting
+and formatting:
+
+```shell
+uv sync --locked
+uv run --locked pytest
+uv run --locked ruff check .
+uv run --locked ruff format --check .
 ```
 
 ## License
