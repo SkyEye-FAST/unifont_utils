@@ -86,9 +86,6 @@ target/
 profile_default/
 ipython_config.py
 
-# uv
-uv.lock
-
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
 __pypackages__/
 

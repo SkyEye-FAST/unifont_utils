@@ -1,11 +1,12 @@
 [project]
-name = "unifont_utils"
-version = "0.6.4"
+name = "unifont-utils"
+dynamic = ["version"]
 description = "Unifont Utilities, but rewritten in Python."
 authors = [{ name = "SkyEye_FAST", email = "skyeyefast@foxmail.com" }]
 requires-python = ">=3.10,<4.0"
-readme = "README.rst"
+readme = "README.md"
 license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 keywords = ["unifont"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -26,20 +27,46 @@ dependencies = [
     "textual>=0.80.0",
     "click>=8.1.0",
     "requests>=2.31",
+    "rich>=13.9",
 ]
 
 [project.urls]
+Homepage = "https://unifont-utils.readthedocs.io/"
+Documentation = "https://unifont-utils.readthedocs.io/"
 Repository = "https://github.com/SkyEye-FAST/unifont_utils"
+Issues = "https://github.com/SkyEye-FAST/unifont_utils/issues"
 
 [project.scripts]
-unipie = "unifont_utils.console:cli"
+unifont-utils = "unifont_utils.console:cli"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = ["pytest>=8.4.2"]
+dev = ["hatchling>=1.27,<2", "pytest>=8.4.2", "ruff>=0.12"]
 
-[tool.hatch.build]
-exclude = ["/tests", "/README.md", "/README_zh.md", "/ruff.toml"]
+[tool.hatch.version]
+path = "unifont_utils/_version.py"
+
+[tool.pytest.ini_options]
+addopts = ["-ra", "--strict-config", "--strict-markers"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["B", "C4", "D", "E", "F", "I", "N", "PERF", "SIM", "UP", "W"]
+ignore = ["D415"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+docstring-code-format = true
+line-ending = "lf"
