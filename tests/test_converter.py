@@ -38,6 +38,10 @@ def test_to_hex_rejects_non_binary_values():
     """Non-binary glyph data should raise."""
     with pytest.raises(ValueError):
         Converter.to_hex([0, 2, 1])
+    with pytest.raises(ValueError):
+        Converter.to_hex([0, 1.0, 1])  # type: ignore[list-item]
+    with pytest.raises(ValueError):
+        Converter.to_hex([False, 0, 1])
 
 
 def test_to_hex_accepts_iterable_and_preserves_bits():
@@ -62,3 +66,10 @@ def test_to_img_data_trims_whitespace_and_decodes():
     """Whitespace is ignored and bits decoded in row-major order."""
     bits = Converter.to_img_data(" 0A ", width=4, height=2)
     assert bits == [0, 0, 0, 0, 1, 0, 1, 0]
+
+
+@pytest.mark.parametrize(("width", "height"), [(0, 16), (8, -1), (True, 16)])
+def test_to_img_data_rejects_invalid_dimensions(width, height):
+    """Image dimensions must be positive integers."""
+    with pytest.raises(ValueError):
+        Converter.to_img_data("00", width=width, height=height)

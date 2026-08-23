@@ -21,11 +21,13 @@ class Converter:
         Raises:
             ValueError: If the input is empty or contains values other than ``0`` or ``1``.
         """
-        bits = [int(bit) for bit in data]
+        bits = list(data)
         if not bits:
             raise ValueError("Unable to convert to .hex string. The glyph data is empty.")
-        if any(bit not in (0, 1) for bit in bits):
-            raise ValueError("Glyph data must contain only 0 or 1 values.")
+        if any(
+            isinstance(bit, bool) or not isinstance(bit, int) or bit not in {0, 1} for bit in bits
+        ):
+            raise ValueError("Glyph data must contain only integer 0 or 1 values.")
 
         return f"{int(''.join(str(bit) for bit in bits), 2):0{((len(bits) + 3) // 4)}X}"
 
@@ -44,6 +46,18 @@ class Converter:
         Raises:
             ValueError: If the hex string is invalid or exceeds the expected size.
         """
+        if not isinstance(hex_str, str):
+            raise TypeError("Hex string must be a string.")
+        if (
+            isinstance(width, bool)
+            or not isinstance(width, int)
+            or isinstance(height, bool)
+            or not isinstance(height, int)
+            or width <= 0
+            or height <= 0
+        ):
+            raise ValueError("Glyph width and height must be positive integers.")
+
         stripped = hex_str.strip()
         if not stripped:
             return []

@@ -2,20 +2,20 @@
 # @Copyright: Copyright (C) 2024-2026 SkyEye_FAST
 """Unifont Utils - Base Module"""
 
-from collections.abc import Sequence
+from collections.abc import Iterable
 from pathlib import Path
 from typing import TypeAlias
 
 # Type aliases
 FilePath: TypeAlias = str | Path
 CodePoint: TypeAlias = str | int
-CodePoints: TypeAlias = Sequence[CodePoint] | set[CodePoint]
+CodePoints: TypeAlias = Iterable[CodePoint]
 
 
 class Validator:
     """Helpers for validating common Unifont values."""
 
-    HEX_CHARS: set[str] = set("0123456789ABCDEF")
+    HEX_CHARS = frozenset("0123456789ABCDEF")
 
     @staticmethod
     def code_point(code_point: CodePoint) -> str:
@@ -31,20 +31,22 @@ class Validator:
             TypeError: If the code point is not a string or an integer.
             ValueError: If the code point is invalid.
         """
+        if isinstance(code_point, bool):
+            raise TypeError("Invalid code point type. Must be a string or integer.")
         if isinstance(code_point, int):
-            code_point = hex(code_point)[2:]
+            if code_point < 0:
+                raise ValueError(f"Invalid code point: {code_point}.")
+            code_point = f"{code_point:X}"
         elif not isinstance(code_point, str):
             raise TypeError("Invalid code point type. Must be a string or integer.")
 
-        if not code_point.isalnum() or int(code_point, 16) > 0x10FFFF:
+        normalized = code_point.upper()
+        if not normalized or any(character not in Validator.HEX_CHARS for character in normalized):
+            raise ValueError(f"Invalid code point: {code_point}.")
+        if int(normalized, 16) > 0x10FFFF:
             raise ValueError(f"Invalid code point: {code_point}.")
 
-        code_point = code_point.upper()
-        for c in code_point:
-            if c not in Validator.HEX_CHARS:
-                raise ValueError(f"Invalid character in code point: {c}.")
-
-        return code_point.zfill(6 if len(code_point) > 4 else 4)
+        return normalized.zfill(6 if len(normalized) > 4 else 4)
 
     @staticmethod
     def code_point_display(code_point: CodePoint) -> str:
@@ -78,19 +80,11 @@ class Validator:
             TypeError: If the code points are not a sequence or set.
             ValueError: If the code points are invalid.
         """
-        if not isinstance(code_points, (Sequence, set)):
-            raise TypeError(
-                "Invalid type for the specified code points. "
-                "The argument must be either a list or a range object."
-            )
-        if not all(isinstance(c, (str, int)) for c in code_points):
-            raise TypeError("The code points in the list must be strings or integers.")
-        unique_code_points = {
-            int(code_point, 16) if isinstance(code_point, str) else int(code_point)
-            for code_point in code_points
-        }
+        if isinstance(code_points, (str, bytes)) or not isinstance(code_points, Iterable):
+            raise TypeError("Code points must be an iterable of strings or integers.")
 
-        return [Validator.code_point(code_point) for code_point in unique_code_points]
+        normalized = [Validator.code_point(code_point) for code_point in code_points]
+        return list(dict.fromkeys(normalized))
 
     @staticmethod
     def hex_str(hex_str: str | None) -> str:
@@ -105,8 +99,10 @@ class Validator:
         Raises:
             ValueError: If the hexadecimal string is invalid.
         """
-        if not hex_str:
+        if hex_str is None or hex_str == "":
             return ""
+        if not isinstance(hex_str, str):
+            raise TypeError("The .hex value must be a string or None.")
 
         hex_str = hex_str.upper()
 
@@ -117,7 +113,7 @@ class Validator:
             if c not in Validator.HEX_CHARS:
                 raise ValueError(f"Invalid character in .hex string: {c}.")
 
-        return hex_str.upper()
+        return hex_str
 
     @staticmethod
     def file_path(file_path: FilePath) -> Path:

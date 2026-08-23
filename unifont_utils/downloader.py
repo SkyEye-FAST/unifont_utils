@@ -12,7 +12,8 @@ from pathlib import Path
 
 import requests
 
-from .base import FilePath, Validator
+from unifont_utils._version import __version__
+from unifont_utils.base import FilePath, Validator
 
 
 def _extract_gzip(source: Path, destination: Path) -> None:
@@ -48,23 +49,25 @@ class UnifontDownloader:
         "unifont_upper_sample",
     )
 
-    def __init__(self, timeout: int = 30) -> None:
+    def __init__(self, timeout: float = 30) -> None:
         """Initialize the downloader.
 
         Args:
             timeout (int): HTTP request timeout in seconds.
         """
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
+            raise ValueError("Timeout must be a positive number of seconds.")
         self.timeout = timeout
 
     @classmethod
-    def normalize_version(cls, version: str | int) -> str:
+    def normalize_version(cls, version: str) -> str:
         """Normalize and validate a Unifont version string.
 
         Accepts versions like ``17.0.03`` or ``v17.0.03`` and enforces a
         minimum major version of ``7``.
 
         Args:
-            version (str | int): Version string or integer (with optional leading ``v``).
+            version: Version string with an optional leading ``v``.
 
         Returns:
             Canonical version string in ``<major>.<minor>.<patch>`` form.
@@ -73,7 +76,9 @@ class UnifontDownloader:
             ValueError: If the format is invalid or the major version is too
                 low.
         """
-        version_str = str(version).strip()
+        if not isinstance(version, str):
+            raise TypeError("Version must be a string in <major>.<minor>.<patch> format.")
+        version_str = version.strip()
         if version_str.startswith(("v", "V")):
             version_str = version_str[1:]
 
@@ -134,7 +139,7 @@ class UnifontDownloader:
             list[str]: Sorted list of version strings meeting the minimum major version.
         """
         versions: set[str] = set()
-        for match in re.findall(r"unifont-((?:\d+\.){2}\d+)/", content):
+        for match in re.findall(r"unifont-((?:\d+\.){2}\d+)(?:/|(?=[\"']))", content):
             parts = match.split(".")
             if len(parts) != 3 or not all(part.isdigit() for part in parts):
                 continue
@@ -175,7 +180,7 @@ class UnifontDownloader:
 
     def download_hex(
         self,
-        version: str | int | None = None,
+        version: str | None = None,
         output: FilePath | None = None,
         *,
         force: bool = False,
@@ -185,8 +190,8 @@ class UnifontDownloader:
         """Download and extract a Unifont ``.hex`` file.
 
         Args:
-            version (str | int | None): Requested version; defaults to the latest when ``None``.
-            output (FilePath | None): Destination file path; defaults to ``<variant>-<version>.hex``.
+            version: Requested version; defaults to the latest when ``None``.
+            output: Destination file path; defaults to ``<variant>-<version>.hex``.
             force (bool): Whether to overwrite an existing destination file.
             variant (str | None): Unifont build variant.
             progress_callback (Callable[[int, int | None], None] | None): Optional callback
@@ -214,14 +219,25 @@ class UnifontDownloader:
 
         archive_url = self.build_download_url(target_version, variant=target_variant)
 
-        tmp_fd, tmp_name = tempfile.mkstemp(suffix=".gz")
-        os.close(tmp_fd)
-        tmp_path = Path(tmp_name)
+        archive_fd, archive_name = tempfile.mkstemp(suffix=".gz")
+        output_fd, output_name = tempfile.mkstemp(
+            prefix=f".{output_path.name}.", suffix=".tmp", dir=output_path.parent
+        )
+        os.close(archive_fd)
+        os.close(output_fd)
+        archive_path = Path(archive_name)
+        temporary_output = Path(output_name)
         try:
-            self._download_file(archive_url, tmp_path, progress_callback=progress_callback)
-            _extract_gzip(tmp_path, output_path)
+            self._download_file(
+                archive_url,
+                archive_path,
+                progress_callback=progress_callback,
+            )
+            _extract_gzip(archive_path, temporary_output)
+            temporary_output.replace(output_path)
         finally:
-            tmp_path.unlink(missing_ok=True)
+            archive_path.unlink(missing_ok=True)
+            temporary_output.unlink(missing_ok=True)
 
         return output_path, target_version
 
@@ -244,7 +260,9 @@ class UnifontDownloader:
             RuntimeError: If the request fails.
         """
         headers = {
-            "User-Agent": "unifont-utils/0.6 (+https://github.com/SkyEye-FAST/unifont_utils)",
+            "User-Agent": (
+                f"unifont-utils/{__version__} (+https://github.com/SkyEye-FAST/unifont_utils)"
+            ),
         }
 
         try:
@@ -294,14 +312,17 @@ class UnifontDownloader:
             RuntimeError: If the request fails.
         """
         try:
-            response = requests.get(
+            with requests.get(
                 url,
                 headers={
-                    "User-Agent": "unifont-utils/0.6 (+https://github.com/SkyEye-FAST/unifont_utils)",
+                    "User-Agent": (
+                        f"unifont-utils/{__version__} "
+                        "(+https://github.com/SkyEye-FAST/unifont_utils)"
+                    ),
                 },
                 timeout=self.timeout,
-            )
-            response.raise_for_status()
-            return response.text
+            ) as response:
+                response.raise_for_status()
+                return response.text
         except requests.RequestException as exc:
             raise RuntimeError(f"Failed to fetch {url}: {exc}") from exc

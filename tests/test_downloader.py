@@ -17,6 +17,8 @@ def test_normalize_version_enforces_format_and_minimum():
         UnifontDownloader.normalize_version("6.0.0")
     with pytest.raises(ValueError):
         UnifontDownloader.normalize_version("17.0")
+    with pytest.raises(TypeError):
+        UnifontDownloader.normalize_version(17)  # type: ignore[arg-type]
 
 
 def test_parse_versions_filters_and_sorts():
@@ -69,3 +71,19 @@ def test_normalize_variant_guards_allowed_set():
 
     with pytest.raises(ValueError):
         UnifontDownloader.normalize_variant("unknown")
+
+
+def test_download_failure_preserves_existing_destination(tmp_path, monkeypatch):
+    """A failed extraction never truncates an existing destination."""
+    downloader = UnifontDownloader()
+    destination = tmp_path / "font.hex"
+    destination.write_text("original", encoding="utf-8")
+
+    def fake_download(url: str, archive: Path, *, progress_callback=None) -> None:
+        archive.write_bytes(b"not gzip")
+
+    monkeypatch.setattr(downloader, "_download_file", fake_download)
+
+    with pytest.raises(RuntimeError):
+        downloader.download_hex("17.0.03", destination, force=True)
+    assert destination.read_text(encoding="utf-8") == "original"
